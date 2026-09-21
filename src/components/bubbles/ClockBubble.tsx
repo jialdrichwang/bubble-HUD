@@ -98,13 +98,15 @@ export const ClockBubble: React.FC<ClockBubbleProps> = ({
   const secondsDisplay = seconds.toString().padStart(2, '0');
   const ampm = hours >= 12 ? 'PM' : 'AM';
 
-  // Formatted date string (月日显示)
+  // Formatted date string (月日显示 - 延长框长并支持两位数月份)
   const monthNum = displayNow.getMonth() + 1;
   const dayNum = displayNow.getDate();
+  const monthStr = monthNum.toString().padStart(2, '0');
+  const dayStr = dayNum.toString().padStart(2, '0');
   const weekDaysZh = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
   const weekDaysEn = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
   const weekStr = lang === 'en' ? weekDaysEn[displayNow.getDay()] : weekDaysZh[displayNow.getDay()];
-  const dateStr = lang === 'en' ? `${monthNum}/${dayNum} ${weekStr}` : `${monthNum}月${dayNum}日 ${weekStr}`;
+  const dateStr = lang === 'en' ? `${monthStr}/${dayStr} ${weekStr}` : `${monthStr}月${dayStr}日 ${weekStr}`;
 
   // Content scale: proportionally scaled so it occupies ~80% of bubble diameter when enlarged
   // "泡泡放大后，里面内容最终放大约占泡泡80%左右"
@@ -204,14 +206,14 @@ export const ClockBubble: React.FC<ClockBubbleProps> = ({
       >
         {/* Roman Dial Face (180x180 reference box) */}
         <div className="relative w-44 h-44 rounded-full flex items-center justify-center pointer-events-none">
-          {/* Railroad Minute Track & Chapter Ring */}
+          {/* Railroad Minute Track & Chapter Ring on Outermost Edge Touching Metal Frame */}
           <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 180 180">
-            {/* Outer and Inner Circle Rings */}
-            <circle cx="90" cy="90" r="82" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="1" />
-            <circle cx="90" cy="90" r="78" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="0.8" />
+            {/* Outer and Inner Circle Rings on Outermost Edge */}
+            <circle cx="90" cy="90" r="88" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="0.8" />
+            <circle cx="90" cy="90" r="80" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="0.6" />
             <circle cx="90" cy="90" r="54" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="0.8" />
 
-            {/* 60 Minute Chapter Track Marks */}
+            {/* 60 Minute Chapter Track Marks (用户需求：秒针刻度在钟面边缘最外边缘，贴外面钟面金属框) */}
             {Array.from({ length: 60 }).map((_, i) => {
               const deg = i * 6;
               const isHour = i % 5 === 0;
@@ -219,11 +221,11 @@ export const ClockBubble: React.FC<ClockBubbleProps> = ({
                 <line
                   key={i}
                   x1="90"
-                  y1={isHour ? '78' : '80'}
+                  y1={isHour ? '10' : '7'}
                   x2="90"
-                  y2="82"
-                  stroke={isHour ? '#f59e0b' : 'rgba(255,255,255,0.3)'}
-                  strokeWidth={isHour ? '1.5' : '0.8'}
+                  y2="2"
+                  stroke={isHour ? '#f59e0b' : 'rgba(255,255,255,0.35)'}
+                  strokeWidth={isHour ? '1.6' : '0.8'}
                   transform={`rotate(${deg} 90 90)`}
                 />
               );
@@ -253,13 +255,13 @@ export const ClockBubble: React.FC<ClockBubbleProps> = ({
             );
           })}
 
-          {/* Luxury Date Window Complication (月日显示 at 3 o'clock / 6 o'clock) */}
+          {/* Luxury Date Window Complication (月日显示 at bottom - 框长延长以完整显示两位数月份) */}
           {showDate && (
             <div
-              className="absolute bottom-9 flex items-center justify-center px-1.5 py-0.5 rounded bg-amber-950/70 border border-amber-500/40 shadow-sm z-10"
+              className="absolute bottom-9 flex items-center justify-center min-w-[76px] px-2.5 py-0.5 rounded bg-amber-950/70 border border-amber-500/40 shadow-sm z-10"
               style={{ backdropFilter: 'blur(4px)' }}
             >
-              <span className="font-mono text-[9px] font-bold text-amber-300 tracking-tight">
+              <span className="font-mono text-[9px] font-bold text-amber-300 tracking-tight whitespace-nowrap">
                 {dateStr}
               </span>
             </div>
@@ -323,7 +325,7 @@ export const ClockBubble: React.FC<ClockBubbleProps> = ({
   // 2. AVIATOR CHRONO (经典航空时钟)
   if (style === 'aviator') {
     const dayOfWeekShort = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][displayNow.getDay()];
-    const aviatorDateStr = `${monthNum}.${dayNum} ${dayOfWeekShort}`;
+    const aviatorDateStr = `${monthStr}.${dayStr} ${dayOfWeekShort}`;
 
     return (
       <div
@@ -368,10 +370,10 @@ export const ClockBubble: React.FC<ClockBubbleProps> = ({
 
             {/* Dial Background Plate */}
             <circle cx="100" cy="100" r="98" fill="#090d16" stroke="#1e293b" strokeWidth="1" />
-            <circle cx="100" cy="100" r="91" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="0.8" />
-            <circle cx="100" cy="100" r="84" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="0.5" />
+            <circle cx="100" cy="100" r="97.5" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="0.8" />
+            <circle cx="100" cy="100" r="90" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="0.6" />
 
-            {/* Outer 60-Minute Ticks with Aviation Precision */}
+            {/* Outer 60-Minute Ticks on Outermost Edge Touching Metal Frame (用户需求：秒针刻度在钟面边缘最外边缘，贴外面钟面金属框) */}
             {Array.from({ length: 60 }).map((_, i) => {
               const deg = i * 6;
               const isMajor = i % 5 === 0;
@@ -381,32 +383,32 @@ export const ClockBubble: React.FC<ClockBubbleProps> = ({
                 <line
                   key={`aviator-tick-${i}`}
                   x1="100"
-                  y1={isMajor ? '84' : '87'}
+                  y1={isMajor ? '10' : '6.5'}
                   x2="100"
-                  y2="92"
-                  stroke={isMajor ? '#f59e0b' : 'rgba(255,255,255,0.25)'}
-                  strokeWidth={isMajor ? '1.4' : '0.6'}
+                  y2="2.5"
+                  stroke={isMajor ? '#f59e0b' : 'rgba(255,255,255,0.3)'}
+                  strokeWidth={isMajor ? '1.5' : '0.8'}
                   transform={`rotate(${deg} 100 100)`}
                 />
               );
             })}
 
-            {/* Enhanced Luminous Green Night Markers at 12, 3, 6, 9 positions */}
+            {/* Enhanced Luminous Green Night Markers at 12, 3, 6, 9 positions on Outermost Edge */}
             {/* 12 o'clock Aviation Dual Dot Triangle */}
-            <g transform="translate(100, 16)" filter="url(#greenNightGlow)">
+            <g transform="translate(100, 11)" filter="url(#greenNightGlow)">
               <polygon points="0,-3 -4,4 4,4" fill="#4ade80" />
               <circle cx="-6" cy="1" r="1.3" fill="#4ade80" />
               <circle cx="6" cy="1" r="1.3" fill="#4ade80" />
             </g>
             {/* 3 o'clock Luminous Bar */}
-            <rect x="178" y="98.5" width="8" height="3" rx="1" fill="#4ade80" filter="url(#greenNightGlow)" />
+            <rect x="188" y="98.5" width="8" height="3" rx="1" fill="#4ade80" filter="url(#greenNightGlow)" />
             {/* 6 o'clock Luminous Bar */}
-            <rect x="98.5" y="178" width="3" height="8" rx="1" fill="#4ade80" filter="url(#greenNightGlow)" />
+            <rect x="98.5" y="188" width="3" height="8" rx="1" fill="#4ade80" filter="url(#greenNightGlow)" />
             {/* 9 o'clock Luminous Bar */}
-            <rect x="14" y="98.5" width="8" height="3" rx="1" fill="#4ade80" filter="url(#greenNightGlow)" />
+            <rect x="4" y="98.5" width="8" height="3" rx="1" fill="#4ade80" filter="url(#greenNightGlow)" />
 
             {/* Prominent High-Contrast Numerals 12, 3, 6, 9 with Green Luminescent Tint */}
-            <text x="100" y="36" fill="#f8fafc" fontSize="15" fontWeight="900" textAnchor="middle" fontFamily="monospace" filter="url(#greenNightGlow)">
+            <text x="100" y="32" fill="#f8fafc" fontSize="15" fontWeight="900" textAnchor="middle" fontFamily="monospace" filter="url(#greenNightGlow)">
               12
             </text>
             <text x="168" y="105" fill="#f8fafc" fontSize="14" fontWeight="900" textAnchor="middle" fontFamily="monospace" filter="url(#greenNightGlow)">
@@ -419,15 +421,15 @@ export const ClockBubble: React.FC<ClockBubbleProps> = ({
               9
             </text>
 
-            {/* 全新动态日期显示: 3 点钟数字内侧加入小字号 9.19 sat，绿色夜光滤镜，位置经调整不挡指针 */}
+            {/* 全新动态日期显示: 3 点钟数字内侧加入小字号，绿色夜光滤镜，框长延长以完整显示两位数月份 (如 10.21 mon) */}
             {showDate && (
-              <g transform="translate(136, 100)" filter="url(#greenNightGlow)">
-                <rect x="-18" y="-7" width="36" height="14" rx="2.5" fill="#042f1a" stroke="#22c55e" strokeWidth="0.8" opacity="0.9" />
+              <g transform="translate(133, 100)" filter="url(#greenNightGlow)">
+                <rect x="-24" y="-7" width="48" height="14" rx="2.5" fill="#042f1a" stroke="#22c55e" strokeWidth="0.8" opacity="0.9" />
                 <text
                   x="0"
                   y="3.2"
                   fill="#4ade80"
-                  fontSize="7"
+                  fontSize="6.8"
                   fontWeight="bold"
                   textAnchor="middle"
                   fontFamily="monospace"
@@ -472,23 +474,73 @@ export const ClockBubble: React.FC<ClockBubbleProps> = ({
               <rect x="98.7" y="32" width="2.6" height="52" rx="1.2" fill="#4ade80" filter="url(#greenNightGlow)" />
             </g>
 
-            {/* 3. Second Hand (Metallic Red Paint, Counterbalance, Red Luminescent Tip Glow) */}
+            {/* 3. Second Hand (用户要求：针尖三角形为红色荧光保留高光白点；中间整根针杆与尾部配重设为清晰可见的绿色荧光) */}
             {settings.showSeconds && (
-              <g transform={`rotate(${secondDeg} 100 100)`} filter="url(#aviatorHand3D)">
-                {/* Tail and Counterbalance */}
-                <line x1="100" y1="120" x2="100" y2="22" stroke="url(#metallicRed)" strokeWidth="1.2" />
-                <circle cx="100" cy="115" r="3.2" fill="url(#metallicRed)" stroke="#ffffff" strokeWidth="0.5" />
-                {/* Luminous Red Needle Tip Glow */}
-                <g filter="url(#redTipGlow)">
-                  <polygon points="100,18 97,25 103,25" fill="#ef4444" />
-                  <circle cx="100" cy="24" r="1.5" fill="#ffffff" />
+              <g transform={`rotate(${secondDeg} 100 100)`}>
+                {/* 3D Depth Drop Shadow Layer */}
+                <g opacity="0.45" transform="translate(1, 2)">
+                  <line x1="100" y1="122" x2="100" y2="8.5" stroke="#000000" strokeWidth="2.2" strokeLinecap="round" />
+                  <circle cx="100" cy="116" r="3.6" fill="#000000" />
+                  <polygon points="100,1.8 96.2,8.5 103.8,8.5" fill="#000000" />
                 </g>
+
+                {/* Second Hand Stem Glow Layer (Green Fluorescent Halo / 绿色荧光外发光) */}
+                <line
+                  x1="100"
+                  y1="122"
+                  x2="100"
+                  y2="8.5"
+                  stroke="#22c55e"
+                  strokeWidth="3.4"
+                  strokeOpacity="0.5"
+                  strokeLinecap="round"
+                />
+
+                {/* Second Hand Solid Main Stem (Clear Crisp Fluorescent Green / 绿色荧光主针杆，清晰显眼) */}
+                <line
+                  x1="100"
+                  y1="122"
+                  x2="100"
+                  y2="8.5"
+                  stroke="#4ade80"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                />
+                {/* Inner bright highlight core for maximum clarity and visibility */}
+                <line
+                  x1="100"
+                  y1="118"
+                  x2="100"
+                  y2="10"
+                  stroke="#bbf7d0"
+                  strokeWidth="0.8"
+                />
+
+                {/* Tail Counterbalance in Green Fluorescent (尾部配重绿色荧光) */}
+                <circle cx="100" cy="116" r="4.2" fill="#14532d" stroke="#4ade80" strokeWidth="1.4" />
+                <circle cx="100" cy="116" r="2.2" fill="#4ade80" />
+                <circle cx="100" cy="116" r="0.8" fill="#ffffff" />
+
+                {/* Needle Tip Arrow Triangle: RED FLUORESCENT (用户需求: "这个三角形还是红色荧光，针尖三角形保留与高光白点") */}
+                <polygon
+                  points="100,1.8 96.2,8.5 103.8,8.5"
+                  fill="#ef4444"
+                  stroke="#fca5a5"
+                  strokeWidth="0.8"
+                />
+                {/* Red luminous inner facet */}
+                <polygon
+                  points="100,3.2 97.6,7.8 102.4,7.8"
+                  fill="#dc2626"
+                />
+                {/* High-visibility White Dot Indicator */}
+                <circle cx="100" cy="6.8" r="1.2" fill="#ffffff" />
               </g>
             )}
 
             {/* Center Cap Hub (Faceted Multi-Ring) */}
             <circle cx="100" cy="100" r="4.5" fill="#0f172a" stroke="#cbd5e1" strokeWidth="1.2" />
-            <circle cx="100" cy="100" r="2.2" fill="url(#metallicRed)" />
+            <circle cx="100" cy="100" r="2.2" fill="#22c55e" />
             <circle cx="100" cy="100" r="1" fill="#ffffff" />
           </svg>
         </div>
@@ -591,7 +643,7 @@ export const ClockBubble: React.FC<ClockBubbleProps> = ({
       style={{ transform: `scale(${scale})`, transformOrigin: 'center center' }}
     >
       <div className="relative w-44 h-44 rounded-full flex items-center justify-center pointer-events-none">
-        {/* Clean Tick Marks */}
+        {/* Clean Tick Marks on Outermost Edge Touching Metal Frame (用户需求：秒针刻度在钟面边缘最外边缘，贴外面钟面金属框) */}
         <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100">
           {Array.from({ length: 12 }).map((_, i) => {
             const deg = i * 30;
@@ -599,10 +651,10 @@ export const ClockBubble: React.FC<ClockBubbleProps> = ({
               <line
                 key={i}
                 x1="50"
-                y1="8"
+                y1={i % 3 === 0 ? '8' : '5.5'}
                 x2="50"
-                y2={i % 3 === 0 ? '14' : '11'}
-                stroke="rgba(255,255,255,0.5)"
+                y2="2"
+                stroke="rgba(255,255,255,0.7)"
                 strokeWidth={i % 3 === 0 ? '2' : '1'}
                 transform={`rotate(${deg} 50 50)`}
               />
@@ -629,7 +681,7 @@ export const ClockBubble: React.FC<ClockBubbleProps> = ({
           {settings.showSeconds && (
             <div
               className="absolute w-0.5 bg-amber-400 rounded-full origin-bottom shadow-lg"
-              style={{ height: '60px', bottom: '88px', transform: `rotate(${secondDeg}deg)` }}
+              style={{ height: '78px', bottom: '88px', transform: `rotate(${secondDeg}deg)` }}
             />
           )}
           <div className="w-2 h-2 rounded-full bg-white z-10" />

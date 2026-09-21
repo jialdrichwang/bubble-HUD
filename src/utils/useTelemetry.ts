@@ -465,15 +465,35 @@ export function useTelemetry(isSimulated = true) {
   const resetTrip = useCallback(() => {
     tripOriginRef.current = null;
     lastPosRef.current = null;
+    const nowTime = Date.now();
     setTelemetry((prev) => ({
       ...prev,
+      speedKmh: 0,
+      accelMps2: 0,
+      gForce: 0,
       tripDurationSec: 0,
       tripDistanceKm: 0,
       tripDirectDistanceKm: 0,
-      maxSpeedKmh: prev.speedKmh,
-      avgSpeedKmh: prev.speedKmh,
+      maxSpeedKmh: 0,
+      avgSpeedKmh: 0,
       speedHistory: [],
       accelHistory: [],
+      speedHistoryShort: Array.from({ length: 40 }, (_, i) => ({
+        time: nowTime - (40 - i) * 500,
+        speedKmh: 0,
+      })),
+      accelHistoryShort: Array.from({ length: 40 }, (_, i) => ({
+        time: nowTime - (40 - i) * 500,
+        gForce: 0,
+      })),
+      speedHistoryLong: Array.from({ length: 60 }, (_, i) => ({
+        time: nowTime - (60 - i) * 60 * 1000,
+        speedKmh: 0,
+      })),
+      accelHistoryLong: Array.from({ length: 60 }, (_, i) => ({
+        time: nowTime - (60 - i) * 60 * 1000,
+        gForce: 0,
+      })),
     }));
   }, []);
 

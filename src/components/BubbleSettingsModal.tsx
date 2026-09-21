@@ -116,6 +116,30 @@ export const BubbleSettingsModal: React.FC<BubbleSettingsModalProps> = ({
             </div>
           </div>
 
+          {/* Close Bubble Option (用户需求：关闭泡泡功能放入设置菜单内) */}
+          {onHideBubble && (
+            <div className="p-2.5 rounded-xl bg-rose-950/40 border border-rose-500/30 flex items-center justify-between">
+              <div className="pr-2">
+                <div className="text-xs font-bold text-rose-300 flex items-center gap-1.5">
+                  <EyeOff className="w-3.5 h-3.5 text-rose-400" />
+                  <span>{isEn ? 'Close / Hide Bubble' : '关闭此泡泡功能'}</span>
+                </div>
+                <div className="text-[10.5px] text-rose-300/70 mt-0.5">
+                  {isEn ? 'Hide to reduce bubble count (Restore via "Reset Layout" on top bar)' : '从屏幕关闭此泡泡，随时可在顶部菜单「初始化排列」一键恢复'}
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  onHideBubble(activeBubbleId);
+                  onClose();
+                }}
+                className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shrink-0 active:scale-95 transition-all shadow"
+              >
+                {isEn ? 'Close' : '关闭泡泡'}
+              </button>
+            </div>
+          )}
+
           <div className="border-t border-slate-800 pt-3" />
 
           {/* Speedometer Settings */}

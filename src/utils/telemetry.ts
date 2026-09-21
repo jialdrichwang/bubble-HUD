@@ -71,6 +71,10 @@ export const DEFAULT_BUBBLE_SETTINGS: BubbleSettings = {
     timeWindowSec: 60,
     maxG: 1.5,
   },
+  swapSpiritAndTiltParams: false,
+  spiritLevelInvertRoll: false,
+  spiritLevelInvertPitch: false,
+  tiltMeterInvertRoll: false,
 };
 
 export function getInitialBubbleConfigs(containerWidth: number, containerHeight: number): BubbleConfig[] {

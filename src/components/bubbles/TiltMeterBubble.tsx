@@ -26,9 +26,22 @@ export const TiltMeterBubble: React.FC<TiltMeterBubbleProps> = ({
   const rollOffset = allSettings?.spiritLevelRollOffset ?? settings.zeroOffset ?? 0;
   const gainFactor = allSettings?.spiritLevelGainFactor ?? settings.gainFactorRoll ?? 1.0;
 
-  // Raw axis mapping based on screen orientation
-  const rawRoll = orientation === 'landscape' ? telemetry.rollDeg : telemetry.pitchDeg;
-  const rawPitch = orientation === 'landscape' ? telemetry.pitchDeg : telemetry.rollDeg;
+  // Swapping and Inversion Flags (顶部滑动菜单设置)
+  const isSwapped = allSettings?.swapSpiritAndTiltParams ?? false;
+  const invertRoll = allSettings?.tiltMeterInvertRoll ?? false;
+
+  // Raw axis mapping based on screen orientation and parameter swapping
+  let baseRoll = orientation === 'landscape' ? telemetry.rollDeg : telemetry.pitchDeg;
+  let basePitch = orientation === 'landscape' ? telemetry.pitchDeg : telemetry.rollDeg;
+
+  if (isSwapped) {
+    const temp = baseRoll;
+    baseRoll = basePitch;
+    basePitch = temp;
+  }
+
+  const rawRoll = invertRoll ? -baseRoll : baseRoll;
+  const rawPitch = basePitch;
 
   // Calibrated roll angle with learned offset and machine learning gain factor
   const currentRoll = Number(((rawRoll - rollOffset) * gainFactor).toFixed(1));
@@ -43,13 +56,13 @@ export const TiltMeterBubble: React.FC<TiltMeterBubbleProps> = ({
 
   return (
     <div
-      className="w-full h-full relative flex flex-col items-center justify-center text-center select-none"
+      className="w-full h-full relative flex flex-col items-center justify-between text-center select-none py-1.5"
       style={{ transform: `scale(${scale})`, transformOrigin: 'center center' }}
     >
-      {/* Unified Centered Content Container */}
-      <div className="flex flex-col items-center justify-center gap-1 w-full max-w-[154px]">
-        {/* Top Header (matching user sketch: 左右倾角) */}
-        <div className="flex items-center justify-between w-full px-1">
+      {/* Unified Container: Top header, Vehicle in upper center, Scale Dial locked to bottom */}
+      <div className="flex flex-col items-center justify-between w-full h-full max-w-[158px]">
+        {/* Top Header (左右倾角 / Status) */}
+        <div className="flex items-center justify-between w-full px-1.5 pt-0.5 shrink-0">
           <span className="text-[10px] font-bold text-rose-300">
             {lang === 'en' ? 'ROLL TILT' : lang === 'zh' ? '左右倾角' : '左右倾角 tilt'}
           </span>
@@ -68,51 +81,14 @@ export const TiltMeterBubble: React.FC<TiltMeterBubbleProps> = ({
           )}
         </div>
 
-        {/* Main Dial Area */}
-        <div className="relative w-36 h-24 flex items-center justify-center my-0.5">
-          {/* Arc Scale & Markings */}
-          <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 200 150">
-            {/* Bottom Arc Path */}
-            <path
-              d="M 35 110 A 75 75 0 0 0 165 110"
-              fill="none"
-              stroke="rgba(255,255,255,0.15)"
-              strokeWidth="4"
-            />
-
-            {/* Danger tick marks */}
-            {[-45, -30, -20, -10, 0, 10, 20, 30, 45].map((deg) => {
-              const rad = ((deg + 90) * Math.PI) / 180;
-              const r1 = 58;
-              const r2 = deg % 20 === 0 ? 72 : 66;
-              const x1 = 100 + r1 * Math.cos(rad);
-              const y1 = 60 + r1 * Math.sin(rad);
-              const x2 = 100 + r2 * Math.cos(rad);
-              const y2 = 60 + r2 * Math.sin(rad);
-              const isDangerTick = Math.abs(deg) >= 30;
-
-              return (
-                <g key={deg}>
-                  <line
-                    x1={x1}
-                    y1={y1}
-                    x2={x2}
-                    y2={y2}
-                    stroke={isDangerTick ? '#f43f5e' : '#e2e8f0'}
-                    strokeWidth={deg === 0 ? '2.5' : '1.5'}
-                  />
-                </g>
-              );
-            })}
-          </svg>
-
-          {/* Center Vehicle Silhouette that tilts realistically */}
+        {/* Center Vehicle Body (Upper center, tilting smoothly) */}
+        <div className="relative flex flex-col items-center justify-center my-auto">
           <div
             className="relative flex flex-col items-center justify-center transition-transform duration-100 ease-out"
             style={{ transform: `rotate(${currentRoll}deg)` }}
           >
             <svg
-              className="w-14 h-10 drop-shadow-md"
+              className="w-16 h-11 drop-shadow-md"
               viewBox="0 0 64 48"
               fill="none"
               stroke={isDanger ? '#ef4444' : isWarning ? '#f59e0b' : '#38bdf8'}
@@ -130,69 +106,141 @@ export const TiltMeterBubble: React.FC<TiltMeterBubbleProps> = ({
             </svg>
           </div>
 
-          {/* Indicator Needle */}
-          <div
-            className="absolute inset-0 flex items-center justify-center pointer-events-none transition-transform duration-75 ease-out"
-            style={{ transform: `rotate(${currentRoll}deg)` }}
-          >
-            <div className="absolute w-1 bg-gradient-to-b from-rose-500 to-red-600 rounded-full h-12 top-1/2 left-1/2 -translate-x-1/2 origin-top shadow-[0_0_8px_#f43f5e]">
-              <div className="w-0 h-0 border-l-[3px] border-l-transparent border-r-[3px] border-r-transparent border-t-[6px] border-t-red-500 absolute -bottom-1 left-1/2 -translate-x-1/2" />
-            </div>
-            <div className="w-2.5 h-2.5 rounded-full bg-slate-900 border-2 border-red-400 z-10" />
-          </div>
-        </div>
-
-        {/* Bottom Roll Angle Readout */}
-        <div className="flex items-center justify-between w-full px-2">
-          <span className="text-[9px] font-mono font-bold text-rose-400">
-            ◀ L
-          </span>
-          <div className="flex items-baseline gap-1 font-mono">
+          {/* Roll Angle Readout in middle */}
+          <div className="flex items-baseline gap-1 font-mono mt-0.5">
             <span
-              className={`font-black text-sm tracking-tight ${
+              className={`font-black text-base tracking-tight ${
                 isDanger ? 'text-red-400 animate-pulse' : isWarning ? 'text-amber-400' : 'text-white'
               }`}
             >
               {absRoll.toFixed(1)}°
             </span>
-            <span className="text-[9px] text-slate-400">
-              {currentRoll > 0.5 ? 'RIGHT' : currentRoll < -0.5 ? 'LEFT' : 'LEVEL'}
+            <span className="text-[9.5px] font-bold text-rose-300">
+              {currentRoll > 0.5 ? '▶ RIGHT' : currentRoll < -0.5 ? '◀ LEFT' : 'LEVEL'}
             </span>
           </div>
-          <span className="text-[9px] font-mono font-bold text-rose-400">
-            R ▶
-          </span>
         </div>
 
-        {/* Bottom Calibration button with Safe Elevation from Curved Edge */}
-        <div className="flex items-center justify-center gap-1.5 pt-0.5">
-          {onOpenCalibration ? (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onOpenCalibration();
-              }}
-              title="学习与校准 / Calibration"
-              className="no-drag text-[8.5px] text-amber-300 hover:text-white flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-950/90 hover:bg-amber-900 border border-amber-500/50 active:scale-95 transition-all shadow-sm"
+        {/* BOTTOM-LOCKED SCALE DIAL (用户需求：侧倾仪适配横竖屏时刻度盘锁定于泡泡底部，竖屏平行于屏短边，横屏平行于屏长边) */}
+        <div className="relative w-full h-18 flex flex-col items-center justify-end shrink-0 mt-auto pb-0.5">
+          {/* Bottom Arc Scale SVG: Anchored flush at bottom curve of the bubble */}
+          <svg className="w-full h-14 pointer-events-none" viewBox="0 0 180 70">
+            {/* Bottom Scale Arc: parallel to bottom edge */}
+            <path
+              d="M 20 48 A 75 75 0 0 0 160 48"
+              fill="none"
+              stroke="rgba(255,255,255,0.2)"
+              strokeWidth="3.5"
+            />
+            {/* Colored Danger Zones on outer ends */}
+            <path
+              d="M 20 48 A 75 75 0 0 0 45 56"
+              fill="none"
+              stroke="#f43f5e"
+              strokeWidth="4.5"
+            />
+            <path
+              d="M 135 56 A 75 75 0 0 0 160 48"
+              fill="none"
+              stroke="#f43f5e"
+              strokeWidth="4.5"
+            />
+
+            {/* Dial Tick Marks locked to bottom arc */}
+            {[-45, -30, -20, -10, 0, 10, 20, 30, 45].map((deg) => {
+              const rad = ((deg + 90) * Math.PI) / 180;
+              const r1 = 56;
+              const r2 = deg % 20 === 0 ? 70 : 64;
+              const cx = 90;
+              const cy = -8;
+              const x1 = cx + r1 * Math.cos(rad);
+              const y1 = cy + r1 * Math.sin(rad);
+              const x2 = cx + r2 * Math.cos(rad);
+              const y2 = cy + r2 * Math.sin(rad);
+              const isDangerTick = Math.abs(deg) >= 30;
+              return (
+                <g key={`tick-${deg}`}>
+                  <line
+                    x1={x1}
+                    y1={y1}
+                    x2={x2}
+                    y2={y2}
+                    stroke={isDangerTick ? '#f43f5e' : deg === 0 ? '#38bdf8' : '#e2e8f0'}
+                    strokeWidth={deg === 0 ? '2.5' : deg % 20 === 0 ? '1.8' : '1.2'}
+                  />
+                  {deg % 30 === 0 && (
+                    <text
+                      x={cx + (r2 + 7) * Math.cos(rad)}
+                      y={cy + (r2 + 7) * Math.sin(rad) + 2}
+                      fill={isDangerTick ? '#f87171' : '#cbd5e1'}
+                      fontSize="6.5"
+                      fontFamily="monospace"
+                      fontWeight="bold"
+                      textAnchor="middle"
+                    >
+                      {Math.abs(deg)}°
+                    </text>
+                  )}
+                </g>
+              );
+            })}
+
+            {/* Needle Sweeping Downward to Bottom Dial */}
+            <g
+              transform={`rotate(${currentRoll} 90 -8)`}
+              className="transition-transform duration-75 ease-out"
             >
-              <span>学习校准</span>
-            </button>
-          ) : onCalibrateZero && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onCalibrateZero(rawPitch, rawRoll);
-              }}
-              title="校准水平归零 / Zero Calibrate"
-              className="no-drag text-[8.5px] text-rose-300 hover:text-white flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-rose-950/90 hover:bg-rose-900 border border-rose-500/50 active:scale-95 transition-all shadow-sm"
-            >
-              <RotateCcw className="w-2.5 h-2.5" />
-              <span>归零</span>
-            </button>
-          )}
-          <span className="text-[8.5px] font-mono text-slate-400">
-            {orientation === 'landscape' ? '横屏' : '竖屏'}
-          </span>
+              <line
+                x1="90"
+                y1="22"
+                x2="90"
+                y2="57"
+                stroke="#f43f5e"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+              />
+              <polygon points="90,62 86,54 94,54" fill="#f43f5e" />
+            </g>
+          </svg>
+
+          {/* Bottom Controls & Orientation Lock Tag */}
+          <div className="flex items-center justify-between w-full px-2 pt-0.5">
+            <span className="text-[8px] font-mono text-rose-400 font-bold">
+              ◀ L
+            </span>
+            <div className="flex items-center gap-1">
+              {onOpenCalibration ? (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenCalibration();
+                  }}
+                  title="学习与校准 / Calibration"
+                  className="no-drag text-[8px] text-amber-300 hover:text-white flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-amber-950/90 hover:bg-amber-900 border border-amber-500/50 active:scale-95 transition-all shadow-sm"
+                >
+                  <span>校准</span>
+                </button>
+              ) : onCalibrateZero && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onCalibrateZero(rawPitch, rawRoll);
+                  }}
+                  title="校准水平归零 / Zero Calibrate"
+                  className="no-drag text-[8px] text-rose-300 hover:text-white flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-rose-950/90 hover:bg-rose-900 border border-rose-500/50 active:scale-95 transition-all shadow-sm"
+                >
+                  <RotateCcw className="w-2.5 h-2.5" />
+                  <span>归零</span>
+                </button>
+              )}
+              <span className="text-[7.5px] font-mono text-slate-300 bg-slate-900/90 px-1 py-0.2 rounded border border-white/10">
+                {orientation === 'landscape' ? '横屏(平行长边)' : '竖屏(平行短边)'}
+              </span>
+            </div>
+            <span className="text-[8px] font-mono text-rose-400 font-bold">
+              R ▶
+            </span>
+          </div>
         </div>
       </div>
     </div>

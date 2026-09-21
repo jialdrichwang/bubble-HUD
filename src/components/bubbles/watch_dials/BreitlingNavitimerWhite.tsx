@@ -44,12 +44,12 @@ export const BreitlingNavitimerWhite: React.FC<WatchDialProps> = ({ now }) => {
         {/* Dial Face Plate (Pure Circular Surface) */}
         <circle cx="100" cy="100" r="98" fill="url(#navitimerWhiteSunburst)" stroke="#cbd5e1" strokeWidth="1" />
 
-        {/* Outer Circular Slide Rule Scale (60-90-10) with red 60 marker */}
-        <circle cx="100" cy="100" r="95" fill="none" stroke="#64748b" strokeWidth="0.6" strokeDasharray="1.5 1.5" />
-        <circle cx="100" cy="100" r="88" fill="none" stroke="#94a3b8" strokeWidth="0.8" />
-        <circle cx="100" cy="100" r="80" fill="none" stroke="#cbd5e1" strokeWidth="0.5" />
+        {/* Outer Circular Slide Rule Scale (60-90-10) with red 60 marker touching outer metal frame */}
+        <circle cx="100" cy="100" r="97.5" fill="none" stroke="#64748b" strokeWidth="0.6" strokeDasharray="1.5 1.5" />
+        <circle cx="100" cy="100" r="90" fill="none" stroke="#94a3b8" strokeWidth="0.8" />
+        <circle cx="100" cy="100" r="82" fill="none" stroke="#cbd5e1" strokeWidth="0.5" />
 
-        {/* Slide Rule Graduations */}
+        {/* Slide Rule Graduations on outermost edge (用户需求：秒针刻度在钟面边缘最外边缘，贴外面钟面金属框) */}
         {Array.from({ length: 60 }).map((_, i) => {
           const deg = i * 6;
           const isMajor = i % 5 === 0;
@@ -57,9 +57,9 @@ export const BreitlingNavitimerWhite: React.FC<WatchDialProps> = ({ now }) => {
             <line
               key={`slide-${i}`}
               x1="100"
-              y1={isMajor ? '88' : '91'}
+              y1={isMajor ? '10' : '7.5'}
               x2="100"
-              y2="95"
+              y2="2.5"
               stroke={i === 0 ? '#ef4444' : isMajor ? '#1e293b' : '#64748b'}
               strokeWidth={i === 0 ? '1.6' : isMajor ? '1.2' : '0.6'}
               transform={`rotate(${deg} 100 100)`}
@@ -68,8 +68,8 @@ export const BreitlingNavitimerWhite: React.FC<WatchDialProps> = ({ now }) => {
         })}
 
         {/* Precision 60-second micro-tick chapter ring (1/5 second aviation subdivisions) */}
-        <circle cx="100" cy="100" r="79" fill="none" stroke="#94a3b8" strokeWidth="0.4" />
-        <circle cx="100" cy="100" r="74" fill="none" stroke="#cbd5e1" strokeWidth="0.4" />
+        <circle cx="100" cy="100" r="89.5" fill="none" stroke="#94a3b8" strokeWidth="0.4" />
+        <circle cx="100" cy="100" r="82" fill="none" stroke="#cbd5e1" strokeWidth="0.4" />
         {Array.from({ length: 240 }).map((_, i) => {
           const deg = i * 1.5; // 4 ticks per second (1/4s)
           const isSecond = i % 4 === 0;
@@ -78,9 +78,9 @@ export const BreitlingNavitimerWhite: React.FC<WatchDialProps> = ({ now }) => {
             <line
               key={`sec-sub-${i}`}
               x1="100"
-              y1={isFiveSec ? '74' : isSecond ? '75.5' : '77'}
+              y1={isFiveSec ? '18' : isSecond ? '16' : '14'}
               x2="100"
-              y2="79"
+              y2="10.5"
               stroke={isFiveSec ? '#ef4444' : isSecond ? '#1e293b' : '#94a3b8'}
               strokeWidth={isFiveSec ? '1' : isSecond ? '0.7' : '0.35'}
               transform={`rotate(${deg} 100 100)`}
@@ -89,16 +89,16 @@ export const BreitlingNavitimerWhite: React.FC<WatchDialProps> = ({ now }) => {
         })}
 
         {/* Red 60 at 12 o'clock & key slide rule numerals */}
-        <text x="100" y="86" fill="#ef4444" fontSize="5.5" fontWeight="bold" textAnchor="middle" fontFamily="sans-serif">
+        <text x="100" y="15" fill="#ef4444" fontSize="5.5" fontWeight="bold" textAnchor="middle" fontFamily="sans-serif">
           60
         </text>
-        <text x="160" y="102" fill="#1e293b" fontSize="5" fontWeight="600" textAnchor="middle" fontFamily="sans-serif">
+        <text x="185" y="102" fill="#1e293b" fontSize="5" fontWeight="600" textAnchor="middle" fontFamily="sans-serif">
           15
         </text>
-        <text x="100" y="163" fill="#1e293b" fontSize="5" fontWeight="600" textAnchor="middle" fontFamily="sans-serif">
+        <text x="100" y="188" fill="#1e293b" fontSize="5" fontWeight="600" textAnchor="middle" fontFamily="sans-serif">
           30
         </text>
-        <text x="40" y="102" fill="#1e293b" fontSize="5" fontWeight="600" textAnchor="middle" fontFamily="sans-serif">
+        <text x="15" y="102" fill="#1e293b" fontSize="5" fontWeight="600" textAnchor="middle" fontFamily="sans-serif">
           45
         </text>
 
@@ -248,9 +248,9 @@ export const BreitlingNavitimerWhite: React.FC<WatchDialProps> = ({ now }) => {
 
         {/* Chronograph Red Needle Seconds Hand with Breitling Anchor / B counterbalance */}
         <g transform={`rotate(${secondDeg} 100 100)`}>
-          <line x1="100" y1="120" x2="100" y2="20" stroke="#ef4444" strokeWidth="1" />
+          <line x1="100" y1="120" x2="100" y2="5" stroke="#ef4444" strokeWidth="1" />
           <circle cx="100" cy="116" r="3.5" fill="#ef4444" />
-          <polygon points="100,18 97,25 103,25" fill="#ef4444" />
+          <polygon points="100,4 97.5,10 102.5,10" fill="#ef4444" />
         </g>
 
         {/* Center Cap */}

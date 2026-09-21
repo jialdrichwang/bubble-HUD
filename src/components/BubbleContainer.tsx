@@ -400,18 +400,6 @@ export const BubbleContainer: React.FC<BubbleContainerProps> = ({
             >
               <Plus className="w-3.5 h-3.5" />
             </button>
-
-            {/* Close/Hide Bubble Button (在设置下增加关闭泡泡按钮，减少总泡数，在初始化排列可以全部恢复) */}
-            <button
-              title="关闭/隐藏此气泡 (减少总泡数，顶栏【初始化排列】可一键恢复)"
-              onClick={(e) => {
-                e.stopPropagation();
-                onUpdateConfig({ visible: false });
-              }}
-              className="w-6 h-6 rounded-full bg-rose-950/80 hover:bg-rose-900 active:scale-90 border border-rose-500/60 text-rose-300 flex items-center justify-center transition-transform"
-            >
-              <EyeOff className="w-3 h-3" />
-            </button>
           </div>
 
           {/* Size readout pill */}

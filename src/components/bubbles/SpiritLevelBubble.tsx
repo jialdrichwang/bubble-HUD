@@ -29,9 +29,23 @@ export const SpiritLevelBubble: React.FC<SpiritLevelBubbleProps> = ({
   const gainFactor = allSettings?.spiritLevelGainFactor ?? settings.sensitivity ?? 1.0;
   const useGpsSlope = allSettings?.spiritLevelUseGpsSlope ?? true;
 
-  // Raw mapping based on orientation
-  const rawPitch = orientation === 'landscape' ? telemetry.pitchDeg : telemetry.rollDeg;
-  const rawRoll = orientation === 'landscape' ? telemetry.rollDeg : telemetry.pitchDeg;
+  // Swapping and Inversion Flags (顶部滑动菜单设置)
+  const isSwapped = allSettings?.swapSpiritAndTiltParams ?? false;
+  const invertRoll = allSettings?.spiritLevelInvertRoll ?? false;
+  const invertPitch = allSettings?.spiritLevelInvertPitch ?? false;
+
+  // Raw mapping based on orientation (and parameter swapping if active)
+  let basePitch = orientation === 'landscape' ? telemetry.pitchDeg : telemetry.rollDeg;
+  let baseRoll = orientation === 'landscape' ? telemetry.rollDeg : telemetry.pitchDeg;
+
+  if (isSwapped) {
+    const temp = basePitch;
+    basePitch = baseRoll;
+    baseRoll = temp;
+  }
+
+  const rawPitch = invertPitch ? -basePitch : basePitch;
+  const rawRoll = invertRoll ? -baseRoll : baseRoll;
 
   // Apply calibration offset and machine learning gain factor
   let calibratedPitch = (rawPitch - pitchOffset) * gainFactor;

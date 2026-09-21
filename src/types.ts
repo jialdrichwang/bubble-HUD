@@ -123,6 +123,12 @@ export interface BubbleSettings {
   tiltMeterRollOffset?: number;
   tiltMeterGainFactor?: number;
   tiltMeterUseGpsSlope?: boolean;
+
+  // Real-time Swapping & Inversion Controls (顶部滑动菜单5个控制按钮)
+  swapSpiritAndTiltParams?: boolean;      // 水平仪-侧倾仪参数对换
+  spiritLevelInvertRoll?: boolean;        // 水平仪左右对换（图像转向左右对换）
+  spiritLevelInvertPitch?: boolean;       // 水平仪俯仰对换
+  tiltMeterInvertRoll?: boolean;          // 侧倾仪左右对换
 }
 
 export interface TelemetryData {

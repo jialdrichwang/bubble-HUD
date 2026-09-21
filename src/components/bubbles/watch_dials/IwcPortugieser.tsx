@@ -50,14 +50,14 @@ export const IwcPortugieser: React.FC<WatchDialProps> = ({ now }) => {
           </filter>
         </defs>
 
-        {/* Circular Dial Surface (Surface only, no frame or bezel) */}
+        {/* Circular Dial Surface (Surface only, flush to outer metal frame) */}
         <circle cx="100" cy="100" r="98" fill="url(#iwcSilverRadial)" stroke="#cbd5e1" strokeWidth="0.8" />
 
-        {/* Outer Railway Track Minute Chapter Ring with Precision Graduations */}
-        <circle cx="100" cy="100" r="95" fill="none" stroke="#64748b" strokeWidth="0.8" />
-        <circle cx="100" cy="100" r="88" fill="none" stroke="#94a3b8" strokeWidth="0.5" />
+        {/* Outer Railway Track Minute Chapter Ring on Outermost Edge Touching Metal Frame */}
+        <circle cx="100" cy="100" r="97.5" fill="none" stroke="#64748b" strokeWidth="0.8" />
+        <circle cx="100" cy="100" r="90" fill="none" stroke="#94a3b8" strokeWidth="0.5" />
 
-        {/* 60-Second Precision Micro-Ticks (航空精密刻度: 1/4s fine graduations) */}
+        {/* 60-Second Precision Micro-Ticks (用户需求：秒针刻度在钟面边缘最外边缘，贴外面钟面金属框) */}
         {Array.from({ length: 240 }).map((_, i) => {
           const deg = i * 1.5;
           const isSecond = i % 4 === 0;
@@ -66,9 +66,9 @@ export const IwcPortugieser: React.FC<WatchDialProps> = ({ now }) => {
             <line
               key={`iwc-micro-${i}`}
               x1="100"
-              y1={isFiveSec ? '88' : isSecond ? '90' : '92'}
+              y1={isFiveSec ? '10' : isSecond ? '7.5' : '5.5'}
               x2="100"
-              y2="95"
+              y2="2.5"
               stroke={isFiveSec ? '#1d4ed8' : isSecond ? '#475569' : '#94a3b8'}
               strokeWidth={isFiveSec ? '1.2' : isSecond ? '0.7' : '0.35'}
               transform={`rotate(${deg} 100 100)`}
@@ -76,12 +76,12 @@ export const IwcPortugieser: React.FC<WatchDialProps> = ({ now }) => {
           );
         })}
 
-        {/* 60 Minute Numeral Markers at 5-minute intervals */}
+        {/* 60 Minute Numeral Markers at 5-minute intervals (Just inside the outer edge ticks) */}
         {[5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60].map((m, idx) => {
           const deg = (idx + 1) * 30;
           const rad = (deg - 90) * (Math.PI / 180);
-          const x = 100 + 83 * Math.cos(rad);
-          const y = 100 + 83 * Math.sin(rad) + 2;
+          const x = 100 + 84 * Math.cos(rad);
+          const y = 100 + 84 * Math.sin(rad) + 2;
           return (
             <text
               key={`iwc-min-${m}`}
@@ -226,9 +226,9 @@ export const IwcPortugieser: React.FC<WatchDialProps> = ({ now }) => {
           />
         </g>
 
-        {/* Needle-Thin Blued Chronograph Seconds Hand */}
+        {/* Needle-Thin Blued Chronograph Seconds Hand (Reaching to the outermost tick marks) */}
         <g transform={`rotate(${secondDeg} 100 100)`}>
-          <line x1="100" y1="120" x2="100" y2="18" stroke="#1e40af" strokeWidth="0.8" />
+          <line x1="100" y1="120" x2="100" y2="4" stroke="#1e40af" strokeWidth="0.8" />
           <circle cx="100" cy="116" r="3" fill="#1e40af" />
         </g>
 

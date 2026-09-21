@@ -103,23 +103,59 @@ export const CompassBubble: React.FC<CompassBubbleProps> = ({
           )}
         </div>
 
-        {/* 3D Perspective Sphere Container */}
+        {/* 3D Perspective Sphere & Earth Container */}
         <div
-          className="relative w-30 h-30 flex items-center justify-center my-0.5 preserve-3d"
+          className="relative w-32 h-32 flex items-center justify-center my-0.5 preserve-3d"
           style={{ perspective: `${settings.spherePerspective}px` }}
         >
-          {/* 3D Rotating Compass Card with Standing Upright Letters */}
+          {/* CRISP 3D SPHERICAL COORDINATE GRID (用户需求：不用加地球图片，只用把地球的原有的网格线清淅一点，加了地球影响读取) */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <svg className="w-24 h-24" viewBox="0 0 100 100">
+              <defs>
+                <clipPath id="sphereWireframeClip">
+                  <circle cx="50" cy="50" r="46" />
+                </clipPath>
+              </defs>
+
+              {/* Pure Transparent Subtle Sphere Shell */}
+              <circle
+                cx="50"
+                cy="50"
+                r="46"
+                fill="rgba(2, 6, 23, 0.25)"
+                stroke="rgba(16, 185, 129, 0.45)"
+                strokeWidth="1.2"
+              />
+
+              {/* Crisp, Clear Latitude & Longitude Coordinate Wireframe Grid Lines */}
+              <g clipPath="url(#sphereWireframeClip)">
+                {/* Latitudinal Parallels (Equator, Tropics, High-latitude Parallels) - Crisp & Distinct */}
+                <line x1="4" y1="50" x2="96" y2="50" stroke="#10b981" strokeWidth="1.2" strokeOpacity="0.85" />
+                <ellipse cx="50" cy="50" rx="46" ry="16" fill="none" stroke="#34d399" strokeWidth="1" strokeOpacity="0.75" />
+                <ellipse cx="50" cy="50" rx="46" ry="32" fill="none" stroke="#6ee7b7" strokeWidth="0.8" strokeOpacity="0.6" strokeDasharray="3 2" />
+
+                {/* Longitudinal Meridians (Prime meridian & Great Circles) - Crisp & Distinct */}
+                <line x1="50" y1="4" x2="50" y2="96" stroke="#10b981" strokeWidth="1.2" strokeOpacity="0.85" />
+                <ellipse cx="50" cy="50" rx="16" ry="46" fill="none" stroke="#34d399" strokeWidth="1" strokeOpacity="0.75" />
+                <ellipse cx="50" cy="50" rx="32" ry="46" fill="none" stroke="#6ee7b7" strokeWidth="0.8" strokeOpacity="0.6" strokeDasharray="3 2" />
+
+                {/* Center Equator Anchor Ticks */}
+                <circle cx="50" cy="50" r="2" fill="#34d399" />
+              </g>
+
+              {/* Delicate Outer Rim */}
+              <circle cx="50" cy="50" r="46" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="0.8" />
+            </svg>
+          </div>
+
+          {/* 3D Rotating Compass Card with Standing Upright Letters (No letter glow, No outer letter rings) */}
           <div
-            className="w-28 h-28 rounded-full border-2 border-emerald-400/40 relative flex items-center justify-center transition-transform duration-100 ease-out preserve-3d"
+            className="w-28 h-28 rounded-full border border-emerald-400/50 relative flex items-center justify-center transition-transform duration-100 ease-out preserve-3d"
             style={{
               transform: `rotateX(60deg) rotateZ(${-heading}deg)`,
-              boxShadow: '0 0 16px rgba(16, 185, 129, 0.25), inset 0 0 16px rgba(16, 185, 129, 0.2)',
             }}
           >
-            {/* Equator Circle Ring with Degree Ticks */}
-            <div className="absolute inset-0 rounded-full border border-emerald-400/50 pointer-events-none" />
-
-            {/* North 'N': Positioned on outer equator ring, same size as S, counter-rotated to stay parallel to screen */}
+            {/* North 'N': Positioned on dial, clean solid red, NO letter glow, NO letter outer ring */}
             <div
               className="absolute top-0 left-1/2 flex items-center justify-center pointer-events-none"
               style={{
@@ -127,12 +163,12 @@ export const CompassBubble: React.FC<CompassBubbleProps> = ({
                 transformOrigin: 'center center',
               }}
             >
-              <span className="font-mono font-bold text-[13px] text-red-500 drop-shadow-[0_0_8px_#ef4444] tracking-wider select-none bg-slate-950/80 px-1 rounded-full border border-red-500/40">
+              <span className="font-mono font-black text-sm text-red-500 tracking-wider select-none leading-none">
                 N
               </span>
             </div>
 
-            {/* South 'S': Positioned on outer equator ring, same size as N, counter-rotated to stay parallel to screen */}
+            {/* South 'S': Positioned on dial, clean solid emerald, NO letter glow, NO letter outer ring */}
             <div
               className="absolute bottom-0 left-1/2 flex items-center justify-center pointer-events-none"
               style={{
@@ -140,12 +176,12 @@ export const CompassBubble: React.FC<CompassBubbleProps> = ({
                 transformOrigin: 'center center',
               }}
             >
-              <span className="font-mono font-bold text-[13px] text-emerald-400 drop-shadow-[0_0_8px_#10b981] tracking-wider select-none bg-slate-950/80 px-1 rounded-full border border-emerald-500/40">
+              <span className="font-mono font-black text-sm text-emerald-400 tracking-wider select-none leading-none">
                 S
               </span>
             </div>
 
-            {/* East 'E': Positioned on outer equator ring, counter-rotated to stay parallel to screen */}
+            {/* East 'E': Positioned on dial, clean solid emerald, NO letter glow, NO letter outer ring */}
             <div
               className="absolute right-0 top-1/2 flex items-center justify-center pointer-events-none"
               style={{
@@ -153,12 +189,12 @@ export const CompassBubble: React.FC<CompassBubbleProps> = ({
                 transformOrigin: 'center center',
               }}
             >
-              <span className="font-mono font-bold text-[13px] text-emerald-400 drop-shadow-[0_0_8px_#10b981] tracking-wider select-none bg-slate-950/80 px-1 rounded-full border border-emerald-500/40">
+              <span className="font-mono font-black text-sm text-emerald-400 tracking-wider select-none leading-none">
                 E
               </span>
             </div>
 
-            {/* West 'W': Positioned on outer equator ring, counter-rotated to stay parallel to screen */}
+            {/* West 'W': Positioned on dial, clean solid emerald, NO letter glow, NO letter outer ring */}
             <div
               className="absolute left-0 top-1/2 flex items-center justify-center pointer-events-none"
               style={{
@@ -166,34 +202,28 @@ export const CompassBubble: React.FC<CompassBubbleProps> = ({
                 transformOrigin: 'center center',
               }}
             >
-              <span className="font-mono font-bold text-[13px] text-emerald-400 drop-shadow-[0_0_8px_#10b981] tracking-wider select-none bg-slate-950/80 px-1 rounded-full border border-emerald-500/40">
+              <span className="font-mono font-black text-sm text-emerald-400 tracking-wider select-none leading-none">
                 W
               </span>
             </div>
 
-            {/* 3D Floating Double Diamond Needle (Calibrated length so it clearly points without touching or straddling the N mark) */}
+            {/* 3D Floating Double Diamond Needle (Calibrated length pointing precisely) */}
             <div className="absolute w-3 h-16 flex flex-col items-center justify-center preserve-3d pointer-events-none">
               <div
-                className="w-0 h-0 border-l-[5px] border-l-transparent border-r-[5px] border-r-transparent border-b-[28px] border-b-red-500 drop-shadow-[0_0_8px_#ef4444]"
+                className="w-0 h-0 border-l-[5px] border-l-transparent border-r-[5px] border-r-transparent border-b-[28px] border-b-red-500 drop-shadow-md"
                 style={{ transform: 'translateZ(10px)' }}
               />
               <div
                 className="w-3 h-3 rounded-full bg-slate-950 border-2 border-amber-400 z-20 shadow-md flex items-center justify-center"
                 style={{ transform: 'translateZ(12px)' }}
               >
-                <div className="w-1 h-1 rounded-full bg-amber-400 animate-ping" />
+                <div className="w-1 h-1 rounded-full bg-amber-400" />
               </div>
               <div
-                className="w-0 h-0 border-l-[5px] border-l-transparent border-r-[5px] border-r-transparent border-t-[28px] border-t-slate-300 drop-shadow-[0_0_6px_rgba(255,255,255,0.4)]"
+                className="w-0 h-0 border-l-[5px] border-l-transparent border-r-[5px] border-r-transparent border-t-[28px] border-t-slate-300 drop-shadow-sm"
                 style={{ transform: 'translateZ(10px)' }}
               />
             </div>
-          </div>
-
-          {/* 3D Wireframe Rings */}
-          <div className="absolute inset-0 pointer-events-none rounded-full border border-emerald-400/20 flex items-center justify-center">
-            <div className="w-3/5 h-full rounded-full border border-emerald-400/20" />
-            <div className="absolute w-full h-3/5 rounded-full border border-emerald-400/20" />
           </div>
         </div>
 

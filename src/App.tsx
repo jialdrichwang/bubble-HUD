@@ -39,8 +39,18 @@ export default function App() {
   const [activeSettingBubble, setActiveSettingBubble] = useState<BubbleId | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Settings for each bubble
-  const [bubbleSettings, setBubbleSettings] = useState<BubbleSettings>(DEFAULT_BUBBLE_SETTINGS);
+  // Settings for each bubble (with persisted local storage restore if available)
+  const [bubbleSettings, setBubbleSettings] = useState<BubbleSettings>(() => {
+    try {
+      const saved = localStorage.getItem('BUBBLE_HUD_SETTINGS');
+      if (saved) {
+        return { ...DEFAULT_BUBBLE_SETTINGS, ...JSON.parse(saved) };
+      }
+    } catch (e) {
+      console.warn('Failed to load saved bubble settings:', e);
+    }
+    return DEFAULT_BUBBLE_SETTINGS;
+  });
 
   // Bubble layout configurations
   const [bubbles, setBubbles] = useState<BubbleConfig[]>(() =>
@@ -273,9 +283,94 @@ export default function App() {
     );
   }, [lang]);
 
+  // User Request: "滑动栏增加一键参数归零，清理速度，行驶时间，距离等参数"
+  const handleQuickZeroParams = useCallback(() => {
+    resetTrip();
+    setSimTargetSpeed(0);
+    showToast(
+      lang === 'en'
+        ? 'Trip Parameters Reset: Speed, Driving Time & Distance Cleared to 0'
+        : '一键参数归零完成：速度、行驶时间、行驶距离等参数已清理归零'
+    );
+  }, [resetTrip, setSimTargetSpeed, lang]);
+
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  // 5 Inclinometer and Tilt Meter Swapping & Mode Saving Handlers (用户需求：顶部滑动菜单增加5个按钮)
+  const handleToggleSwapSpiritAndTilt = () => {
+    setBubbleSettings((prev) => {
+      const next = !prev.swapSpiritAndTiltParams;
+      showToast(
+        lang === 'en'
+          ? (next ? 'Spirit Level & Tilt Meter Parameters Swapped' : 'Parameters Reset to Default')
+          : (next ? '水平仪与侧倾仪参数已对换' : '水平仪与侧倾仪参数已恢复默认')
+      );
+      return { ...prev, swapSpiritAndTiltParams: next };
+    });
+  };
+
+  const handleToggleSpiritLevelInvertRoll = () => {
+    setBubbleSettings((prev) => {
+      const next = !prev.spiritLevelInvertRoll;
+      showToast(
+        lang === 'en'
+          ? (next ? 'Spirit Level Left/Right Inverted' : 'Spirit Level Left/Right Normal')
+          : (next ? '水平仪左右对换（转向图像已对换）' : '水平仪左右恢复正常')
+      );
+      return { ...prev, spiritLevelInvertRoll: next };
+    });
+  };
+
+  const handleToggleSpiritLevelInvertPitch = () => {
+    setBubbleSettings((prev) => {
+      const next = !prev.spiritLevelInvertPitch;
+      showToast(
+        lang === 'en'
+          ? (next ? 'Spirit Level Pitch Inverted' : 'Spirit Level Pitch Normal')
+          : (next ? '水平仪俯仰对换已生效' : '水平仪俯仰恢复正常')
+      );
+      return { ...prev, spiritLevelInvertPitch: next };
+    });
+  };
+
+  const handleToggleTiltMeterInvertRoll = () => {
+    setBubbleSettings((prev) => {
+      const next = !prev.tiltMeterInvertRoll;
+      showToast(
+        lang === 'en'
+          ? (next ? 'Tilt Meter Left/Right Inverted' : 'Tilt Meter Left/Right Normal')
+          : (next ? '侧倾仪左右对换已生效' : '侧倾仪左右恢复正常')
+      );
+      return { ...prev, tiltMeterInvertRoll: next };
+    });
+  };
+
+  const handleSaveInclinometerModes = () => {
+    try {
+      localStorage.setItem('BUBBLE_HUD_SETTINGS', JSON.stringify(bubbleSettings));
+      localStorage.setItem(
+        'BUBBLE_HUD_INCLINOMETER_CONFIG',
+        JSON.stringify({
+          swapSpiritAndTiltParams: bubbleSettings.swapSpiritAndTiltParams,
+          spiritLevelInvertRoll: bubbleSettings.spiritLevelInvertRoll,
+          spiritLevelInvertPitch: bubbleSettings.spiritLevelInvertPitch,
+          tiltMeterInvertRoll: bubbleSettings.tiltMeterInvertRoll,
+          spirit_level: bubbleSettings.spirit_level,
+          tilt_meter: bubbleSettings.tilt_meter,
+        })
+      );
+      showToast(
+        lang === 'en'
+          ? '✓ Current Spirit & Tilt Modes Saved to Settings!'
+          : '✓ 当前水平仪与侧倾仪模式已成功保存至设置！'
+      );
+    } catch (err) {
+      console.warn('Failed to save settings:', err);
+      showToast(lang === 'en' ? 'Error saving settings' : '保存设置失败');
+    }
   };
 
   const activeBubbleConfig = bubbles.find((b) => b.id === activeSettingBubble);
@@ -309,7 +404,17 @@ export default function App() {
         onQuickZeroAll={() =>
           handleCalibrateZero(telemetry.pitchDeg, telemetry.rollDeg)
         }
+        onQuickZeroParams={handleQuickZeroParams}
         onOpenPermissionsModal={() => setIsPermModalOpen(true)}
+        swapSpiritAndTiltParams={bubbleSettings.swapSpiritAndTiltParams}
+        onToggleSwapSpiritAndTilt={handleToggleSwapSpiritAndTilt}
+        spiritLevelInvertRoll={bubbleSettings.spiritLevelInvertRoll}
+        onToggleSpiritLevelInvertRoll={handleToggleSpiritLevelInvertRoll}
+        spiritLevelInvertPitch={bubbleSettings.spiritLevelInvertPitch}
+        onToggleSpiritLevelInvertPitch={handleToggleSpiritLevelInvertPitch}
+        tiltMeterInvertRoll={bubbleSettings.tiltMeterInvertRoll}
+        onToggleTiltMeterInvertRoll={handleToggleTiltMeterInvertRoll}
+        onSaveInclinometerModes={handleSaveInclinometerModes}
       />
 
       {/* Sandbox Warning Bar if blocked by iframe preview */}

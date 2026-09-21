@@ -14,6 +14,10 @@ import {
   Sparkles,
   ShieldCheck,
   ExternalLink,
+  ArrowLeftRight,
+  ArrowUpDown,
+  Save,
+  RotateCcw,
 } from 'lucide-react';
 import { HUDTheme, Language } from '../types';
 import { isIframeSandbox } from '../utils/hardwarePermissions';
@@ -33,7 +37,18 @@ interface HUDHeaderProps {
   currentTheme: HUDTheme;
   onChangeTheme: (theme: HUDTheme) => void;
   onQuickZeroAll: () => void;
+  onQuickZeroParams?: () => void;
   onOpenPermissionsModal: () => void;
+  // 5 Inclinometer & Tilt Meter Swapping and Saving Buttons
+  swapSpiritAndTiltParams?: boolean;
+  onToggleSwapSpiritAndTilt?: () => void;
+  spiritLevelInvertRoll?: boolean;
+  onToggleSpiritLevelInvertRoll?: () => void;
+  spiritLevelInvertPitch?: boolean;
+  onToggleSpiritLevelInvertPitch?: () => void;
+  tiltMeterInvertRoll?: boolean;
+  onToggleTiltMeterInvertRoll?: () => void;
+  onSaveInclinometerModes?: () => void;
 }
 
 export const HUDHeader: React.FC<HUDHeaderProps> = ({
@@ -51,7 +66,17 @@ export const HUDHeader: React.FC<HUDHeaderProps> = ({
   currentTheme,
   onChangeTheme,
   onQuickZeroAll,
+  onQuickZeroParams,
   onOpenPermissionsModal,
+  swapSpiritAndTiltParams = false,
+  onToggleSwapSpiritAndTilt,
+  spiritLevelInvertRoll = false,
+  onToggleSpiritLevelInvertRoll,
+  spiritLevelInvertPitch = false,
+  onToggleSpiritLevelInvertPitch,
+  tiltMeterInvertRoll = false,
+  onToggleTiltMeterInvertRoll,
+  onSaveInclinometerModes,
 }) => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [wakeLockActive, setWakeLockActive] = useState(false);
@@ -154,6 +179,86 @@ export const HUDHeader: React.FC<HUDHeaderProps> = ({
           >
             <Target className="w-3.5 h-3.5 text-purple-300" />
             <span>{lang === 'en' ? 'Zero Slant' : '一键校准斜角'}</span>
+          </button>
+
+          {/* User Request: 滑动栏增加一键参数归零，清理速度，行驶时间，距离等参数 */}
+          <button
+            id="btn-quick-zero-telemetry-params"
+            onClick={onQuickZeroParams}
+            title="一键参数归零 (清理当前速度、行驶时间、行驶距离、峰值均速与历史曲线等参数) / Quick Reset Speed, Driving Time & Distance"
+            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-gradient-to-r from-red-600/90 to-amber-600/90 hover:from-red-500 hover:to-amber-500 text-white border border-amber-400/50 shadow-[0_0_12px_rgba(239,68,68,0.35)] active:scale-95 transition-all text-xs font-bold shrink-0"
+          >
+            <RotateCcw className="w-3.5 h-3.5 text-amber-200" />
+            <span>{lang === 'en' ? 'Zero Params' : '一键参数归零'}</span>
+          </button>
+        </div>
+
+        {/* 5 Inclinometer & Tilt Meter Control Buttons (用户要求：顶部滑动菜单增加水平仪-侧倾仪参数对换，水平仪左右对换（图像转向左右对换），水平仪俯仰对换，侧倾仪左右对换，保存当前水平与侧倾模式，5个按钮) */}
+        <div className="flex items-center gap-1 bg-slate-900/90 border border-slate-700/80 rounded-xl p-1 shrink-0">
+          {/* Button 1: 水平仪-侧倾仪参数对换 */}
+          <button
+            onClick={onToggleSwapSpiritAndTilt}
+            title="水平仪与侧倾仪参数对换 (Swap Spirit Level & Tilt Meter Telemetry Parameters)"
+            className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold transition-all active:scale-95 ${
+              swapSpiritAndTiltParams
+                ? 'bg-amber-500 text-slate-950 border border-amber-300 shadow-[0_0_10px_rgba(245,158,11,0.5)] font-bold'
+                : 'bg-slate-800/80 hover:bg-slate-750 text-slate-200 border border-slate-700/60 hover:text-white'
+            }`}
+          >
+            <ArrowLeftRight className={`w-3.5 h-3.5 ${swapSpiritAndTiltParams ? 'text-slate-950' : 'text-amber-400'}`} />
+            <span>{lang === 'en' ? (swapSpiritAndTiltParams ? 'Params Swapped' : 'Swap Params') : (swapSpiritAndTiltParams ? '水平/侧倾:已对换' : '水平-侧倾参数对换')}</span>
+          </button>
+
+          {/* Button 2: 水平仪左右对换（图像转向左右对换） */}
+          <button
+            onClick={onToggleSpiritLevelInvertRoll}
+            title="水平仪左右对换 (图像转向左右对换 / Invert Spirit Level Roll)"
+            className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold transition-all active:scale-95 ${
+              spiritLevelInvertRoll
+                ? 'bg-sky-500 text-slate-950 border border-sky-300 shadow-[0_0_10px_rgba(14,165,233,0.5)] font-bold'
+                : 'bg-slate-800/80 hover:bg-slate-750 text-slate-200 border border-slate-700/60 hover:text-white'
+            }`}
+          >
+            <FlipHorizontal className={`w-3.5 h-3.5 ${spiritLevelInvertRoll ? 'text-slate-950' : 'text-sky-400'}`} />
+            <span>{lang === 'en' ? (spiritLevelInvertRoll ? 'Level L/R Inverted' : 'Level L/R Swap') : (spiritLevelInvertRoll ? '水平左右:已对换' : '水平仪左右对换')}</span>
+          </button>
+
+          {/* Button 3: 水平仪俯仰对换 */}
+          <button
+            onClick={onToggleSpiritLevelInvertPitch}
+            title="水平仪俯仰对换 (上下对换 / Invert Spirit Level Pitch)"
+            className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold transition-all active:scale-95 ${
+              spiritLevelInvertPitch
+                ? 'bg-cyan-500 text-slate-950 border border-cyan-300 shadow-[0_0_10px_rgba(6,182,212,0.5)] font-bold'
+                : 'bg-slate-800/80 hover:bg-slate-750 text-slate-200 border border-slate-700/60 hover:text-white'
+            }`}
+          >
+            <ArrowUpDown className={`w-3.5 h-3.5 ${spiritLevelInvertPitch ? 'text-slate-950' : 'text-cyan-400'}`} />
+            <span>{lang === 'en' ? (spiritLevelInvertPitch ? 'Level Pitch Inverted' : 'Level Pitch Swap') : (spiritLevelInvertPitch ? '水平俯仰:已对换' : '水平仪俯仰对换')}</span>
+          </button>
+
+          {/* Button 4: 侧倾仪左右对换 */}
+          <button
+            onClick={onToggleTiltMeterInvertRoll}
+            title="侧倾仪左右对换 (Invert Tilt Meter Roll)"
+            className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold transition-all active:scale-95 ${
+              tiltMeterInvertRoll
+                ? 'bg-rose-500 text-white border border-rose-300 shadow-[0_0_10px_rgba(244,63,94,0.5)] font-bold'
+                : 'bg-slate-800/80 hover:bg-slate-750 text-slate-200 border border-slate-700/60 hover:text-white'
+            }`}
+          >
+            <FlipHorizontal className={`w-3.5 h-3.5 ${tiltMeterInvertRoll ? 'text-white' : 'text-rose-400'}`} />
+            <span>{lang === 'en' ? (tiltMeterInvertRoll ? 'Tilt L/R Inverted' : 'Tilt L/R Swap') : (tiltMeterInvertRoll ? '侧倾左右:已对换' : '侧倾仪左右对换')}</span>
+          </button>
+
+          {/* Button 5: 保存当前水平与侧倾模式 */}
+          <button
+            onClick={onSaveInclinometerModes}
+            title="保存当前水平与侧倾模式至本地配置 (Save Current Inclinometer & Tilt Meter Modes)"
+            className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-400/80 shadow-[0_0_12px_rgba(16,185,129,0.35)] transition-all active:scale-95"
+          >
+            <Save className="w-3.5 h-3.5 text-white" />
+            <span>{lang === 'en' ? 'Save Modes' : '保存当前水平与侧倾模式'}</span>
           </button>
         </div>
 

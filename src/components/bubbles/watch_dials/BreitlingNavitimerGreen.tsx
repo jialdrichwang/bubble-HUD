@@ -49,10 +49,11 @@ export const BreitlingNavitimerGreen: React.FC<WatchDialProps> = ({ now }) => {
         {/* Expanded Inner Sunburst Mint Green Plate (Maximized so green plate dominates the dial, reducing white edge) */}
         <circle cx="100" cy="100" r="88" fill="url(#mintGreenSunburst)" stroke="rgba(255,255,255,0.3)" strokeWidth="0.8" />
 
-        {/* Outer White Slide Rule Numbers and Ticks (Sleek and narrow border) */}
-        <circle cx="100" cy="100" r="96" fill="none" stroke="#64748b" strokeWidth="0.5" />
-        <circle cx="100" cy="100" r="89" fill="none" stroke="#94a3b8" strokeWidth="0.6" />
+        {/* Outer White Slide Rule Numbers and Ticks (Touching outermost metal frame) */}
+        <circle cx="100" cy="100" r="97.5" fill="none" stroke="#64748b" strokeWidth="0.5" />
+        <circle cx="100" cy="100" r="90" fill="none" stroke="#94a3b8" strokeWidth="0.6" />
 
+        {/* Slide Rule Graduations on outermost edge (用户需求：秒针刻度在钟面边缘最外边缘，贴外面钟面金属框) */}
         {Array.from({ length: 60 }).map((_, i) => {
           const deg = i * 6;
           const isMajor = i % 5 === 0;
@@ -60,9 +61,9 @@ export const BreitlingNavitimerGreen: React.FC<WatchDialProps> = ({ now }) => {
             <line
               key={`slide-grn-${i}`}
               x1="100"
-              y1={isMajor ? '89' : '92'}
+              y1={isMajor ? '10' : '7.5'}
               x2="100"
-              y2="96"
+              y2="2.5"
               stroke={i === 0 ? '#ef4444' : isMajor ? '#1e293b' : '#64748b'}
               strokeWidth={i === 0 ? '1.4' : isMajor ? '1' : '0.5'}
               transform={`rotate(${deg} 100 100)`}
@@ -71,7 +72,7 @@ export const BreitlingNavitimerGreen: React.FC<WatchDialProps> = ({ now }) => {
         })}
 
         {/* Precision 60-second micro-tick chapter ring on Green Dial surface */}
-        <circle cx="100" cy="100" r="87" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="0.5" />
+        <circle cx="100" cy="100" r="89.5" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="0.5" />
         <circle cx="100" cy="100" r="82" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="0.4" />
         {Array.from({ length: 240 }).map((_, i) => {
           const deg = i * 1.5;
@@ -81,9 +82,9 @@ export const BreitlingNavitimerGreen: React.FC<WatchDialProps> = ({ now }) => {
             <line
               key={`grn-micro-${i}`}
               x1="100"
-              y1={isFiveSec ? '82' : isSecond ? '83.5' : '85'}
+              y1={isFiveSec ? '18' : isSecond ? '16' : '14'}
               x2="100"
-              y2="87"
+              y2="10.5"
               stroke={isFiveSec ? '#fbbf24' : isSecond ? '#ffffff' : 'rgba(255,255,255,0.5)'}
               strokeWidth={isFiveSec ? '1.1' : isSecond ? '0.7' : '0.35'}
               transform={`rotate(${deg} 100 100)`}
@@ -92,7 +93,7 @@ export const BreitlingNavitimerGreen: React.FC<WatchDialProps> = ({ now }) => {
         })}
 
         {/* Slide Rule Red 60 at 12 o'clock */}
-        <text x="100" y="94.5" fill="#ef4444" fontSize="4.5" fontWeight="bold" textAnchor="middle" fontFamily="sans-serif">
+        <text x="100" y="15" fill="#ef4444" fontSize="4.5" fontWeight="bold" textAnchor="middle" fontFamily="sans-serif">
           60
         </text>
 
@@ -230,11 +231,11 @@ export const BreitlingNavitimerGreen: React.FC<WatchDialProps> = ({ now }) => {
           <rect x="99.1" y="38" width="1.8" height="46" fill="#ffffff" />
         </g>
 
-        {/* Chronograph Red Seconds Needle */}
+        {/* Chronograph Red Seconds Needle (Reaching outermost ticks) */}
         <g transform={`rotate(${secondDeg} 100 100)`}>
-          <line x1="100" y1="120" x2="100" y2="22" stroke="#ef4444" strokeWidth="1" />
+          <line x1="100" y1="120" x2="100" y2="5" stroke="#ef4444" strokeWidth="1" />
           <circle cx="100" cy="116" r="3.5" fill="#ef4444" />
-          <polygon points="100,20 97.5,27 102.5,27" fill="#ef4444" />
+          <polygon points="100,4 97.5,10 102.5,10" fill="#ef4444" />
         </g>
 
         {/* Center Rose Gold Hub */}

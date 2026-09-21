@@ -15,7 +15,9 @@ export const BreitlingChronomatBlue: React.FC<WatchDialProps> = ({ now }) => {
   const minuteDeg = (minutes + seconds / 60) * 6;
   const hourDeg = ((hours % 12) + minutes / 60) * 30;
 
-  const dayOfMonth = now.getDate();
+  const monthFormatted = (now.getMonth() + 1).toString().padStart(2, '0');
+  const dayFormatted = now.getDate().toString().padStart(2, '0');
+  const dateFormatted = `${monthFormatted}.${dayFormatted}`;
 
   return (
     <div className="relative w-44 h-44 rounded-full flex items-center justify-center pointer-events-none select-none">
@@ -48,16 +50,37 @@ export const BreitlingChronomatBlue: React.FC<WatchDialProps> = ({ now }) => {
           />
         ))}
 
-        {/* 24-Hour Chapter Ring */}
-        <circle cx="100" cy="100" r="88" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="0.8" />
-        <circle cx="100" cy="100" r="80" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="0.6" />
+        {/* Precision 60-Second Micro-Tick Chapter Ring on Outermost Edge Touching Metal Frame (用户需求：秒针刻度在钟面边缘最外边缘，贴外面钟面金属框) */}
+        <circle cx="100" cy="100" r="97.5" fill="none" stroke="rgba(56, 189, 248, 0.5)" strokeWidth="0.6" />
+        <circle cx="100" cy="100" r="90" fill="none" stroke="rgba(255, 255, 255, 0.25)" strokeWidth="0.5" />
+        {Array.from({ length: 240 }).map((_, i) => {
+          const deg = i * 1.5;
+          const isSecond = i % 4 === 0;
+          const isFive = i % 20 === 0;
+          return (
+            <line
+              key={`blue-sec-${i}`}
+              x1="100"
+              y1={isFive ? '10' : isSecond ? '7.5' : '5.5'}
+              x2="100"
+              y2="2.5"
+              stroke={isFive ? '#38bdf8' : isSecond ? '#ffffff' : 'rgba(255,255,255,0.3)'}
+              strokeWidth={isFive ? '1.2' : isSecond ? '0.7' : '0.35'}
+              transform={`rotate(${deg} 100 100)`}
+            />
+          );
+        })}
+
+        {/* 24-Hour Chapter Ring inside the seconds ring */}
+        <circle cx="100" cy="100" r="89.5" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="0.6" />
+        <circle cx="100" cy="100" r="81" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="0.5" />
 
         {/* 24-Hour Numerals */}
         {[24, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22].map((hr, i) => {
           const deg = i * 30;
           const rad = (deg - 90) * (Math.PI / 180);
-          const x = 100 + 84 * Math.cos(rad);
-          const y = 100 + 84 * Math.sin(rad) + 2;
+          const x = 100 + 85 * Math.cos(rad);
+          const y = 100 + 85 * Math.sin(rad) + 2;
           return (
             <text
               key={`gmt-num-${hr}`}
@@ -74,27 +97,6 @@ export const BreitlingChronomatBlue: React.FC<WatchDialProps> = ({ now }) => {
           );
         })}
 
-        {/* Precision 60-Second Micro-Tick Chapter Ring (航空精密刻度: 60秒细分刻度) */}
-        <circle cx="100" cy="100" r="78" fill="none" stroke="rgba(56, 189, 248, 0.4)" strokeWidth="0.5" />
-        <circle cx="100" cy="100" r="72" fill="none" stroke="rgba(255, 255, 255, 0.15)" strokeWidth="0.4" />
-        {Array.from({ length: 240 }).map((_, i) => {
-          const deg = i * 1.5;
-          const isSecond = i % 4 === 0;
-          const isFive = i % 20 === 0;
-          return (
-            <line
-              key={`blue-sec-${i}`}
-              x1="100"
-              y1={isFive ? '72' : isSecond ? '74' : '75.5'}
-              x2="100"
-              y2="78"
-              stroke={isFive ? '#38bdf8' : isSecond ? '#ffffff' : 'rgba(255,255,255,0.3)'}
-              strokeWidth={isFive ? '1.2' : isSecond ? '0.7' : '0.35'}
-              transform={`rotate(${deg} 100 100)`}
-            />
-          );
-        })}
-
         {/* Breitling Chronomat Text */}
         <g transform="translate(100, 58)">
           <path d="M -12 -3 C -6 -6, 0 0, 0 0 C 0 0, 6 -6, 12 -3 C 8 2, 0 4, 0 4 C 0 4, -8 2, -12 -3 Z" fill="#f59e0b" />
@@ -106,11 +108,11 @@ export const BreitlingChronomatBlue: React.FC<WatchDialProps> = ({ now }) => {
           </text>
         </g>
 
-        {/* Date Window at 6 o'clock position */}
+        {/* Date Window at 6 o'clock position (框长延长以完整显示两位数月份) */}
         <g transform="translate(100, 142)">
-          <rect x="-8" y="-6" width="16" height="11" rx="1.5" fill="#0f172a" stroke="#38bdf8" strokeWidth="0.8" />
-          <text x="0" y="2.5" fill="#ffffff" fontSize="7.5" fontWeight="bold" textAnchor="middle" fontFamily="monospace">
-            {dayOfMonth}
+          <rect x="-14" y="-6" width="28" height="12" rx="1.5" fill="#0f172a" stroke="#38bdf8" strokeWidth="0.8" />
+          <text x="0" y="2.8" fill="#ffffff" fontSize="6.5" fontWeight="bold" textAnchor="middle" fontFamily="monospace">
+            {dateFormatted}
           </text>
         </g>
 
@@ -138,10 +140,10 @@ export const BreitlingChronomatBlue: React.FC<WatchDialProps> = ({ now }) => {
           <rect x="99.1" y="36" width="1.8" height="48" fill="#38bdf8" />
         </g>
 
-        {/* Center Seconds Needle (Single clear blued seconds hand, redundant conflicting red hand removed) */}
+        {/* Center Seconds Needle (Reaching outermost ticks) */}
         <g transform={`rotate(${secondDeg} 100 100)`}>
-          <line x1="100" y1="120" x2="100" y2="20" stroke="#38bdf8" strokeWidth="0.8" />
-          <circle cx="100" cy="38" r="2.5" fill="#38bdf8" stroke="#ffffff" strokeWidth="0.5" />
+          <line x1="100" y1="120" x2="100" y2="4" stroke="#38bdf8" strokeWidth="0.8" />
+          <circle cx="100" cy="22" r="2.2" fill="#38bdf8" stroke="#ffffff" strokeWidth="0.5" />
           <circle cx="100" cy="116" r="3" fill="#38bdf8" />
         </g>
 
