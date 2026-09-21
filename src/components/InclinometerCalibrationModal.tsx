@@ -32,19 +32,64 @@ export const InclinometerCalibrationModal: React.FC<InclinometerCalibrationModal
 
   if (!isOpen) return null;
 
-  // Raw axis mapping based on screen orientation
-  const rawPitch = orientation === 'landscape' ? telemetry.pitchDeg : telemetry.rollDeg;
-  const rawRoll = orientation === 'landscape' ? telemetry.rollDeg : telemetry.pitchDeg;
+  // Raw axis mapping based on screen orientation, swapping, and axis inversion
+  const isSwapped = settings.swapSpiritAndTiltParams ?? false;
+  const invertRoll = settings.spiritLevelInvertRoll ?? false;
+  const invertPitch = settings.spiritLevelInvertPitch ?? false;
+  const invertTiltRoll = settings.tiltMeterInvertRoll ?? false;
+
+  let basePitch = orientation === 'landscape' ? telemetry.pitchDeg : telemetry.rollDeg;
+  let baseRoll = orientation === 'landscape' ? telemetry.rollDeg : telemetry.pitchDeg;
+  if (isSwapped) {
+    const temp = basePitch;
+    basePitch = baseRoll;
+    baseRoll = temp;
+  }
+
+  const rawPitch = invertPitch ? -basePitch : basePitch;
+  const rawRoll = invertRoll ? -baseRoll : baseRoll;
+
+  // For Tilt Meter roll mapping
+  let tmBaseRoll = orientation === 'landscape' ? telemetry.rollDeg : telemetry.pitchDeg;
+  let tmBasePitch = orientation === 'landscape' ? telemetry.pitchDeg : telemetry.rollDeg;
+  if (isSwapped) {
+    const temp = tmBaseRoll;
+    tmBaseRoll = tmBasePitch;
+    tmBasePitch = temp;
+  }
+  const rawTmRoll = invertTiltRoll ? -tmBaseRoll : tmBaseRoll;
 
   // Calculated calibrated outputs
   const calibratedPitch = Number(((rawPitch - pitchOffset) * gainFactor).toFixed(1));
   const calibratedRoll = Number(((rawRoll - rollOffset) * gainFactor).toFixed(1));
 
-  // Handle zeroing (平地基准校准)
+  // Handle zeroing (平地基准校准 - 立即将水平仪与侧倾仪零基准写入全局状态并归零)
   const handleCalibrateZero = () => {
-    setPitchOffset(rawPitch);
-    setRollOffset(rawRoll);
-    setFeedbackMsg(`已记录当前位置为水平零基准 (俯仰偏置: ${rawPitch.toFixed(1)}°, 侧倾偏置: ${rawRoll.toFixed(1)}°)`);
+    const pOff = Number(rawPitch.toFixed(1));
+    const rOff = Number(rawRoll.toFixed(1));
+    const tmOff = Number(rawTmRoll.toFixed(1));
+
+    setPitchOffset(pOff);
+    setRollOffset(rOff);
+
+    // 立即同步到全局仪表配置，确保背景水平仪与侧倾仪瞬间归零为 0.0°
+    onUpdateSettings({
+      spiritLevelPitchOffset: pOff,
+      spiritLevelRollOffset: rOff,
+      tiltMeterPitchOffset: pOff,
+      tiltMeterRollOffset: tmOff,
+      spirit_level: {
+        ...settings.spirit_level,
+        pitchOffset: pOff,
+        rollOffset: rOff,
+      },
+      tilt_meter: {
+        ...settings.tilt_meter,
+        zeroOffset: tmOff,
+      },
+    });
+
+    setFeedbackMsg(`已精准学习零点并归零！(俯仰偏置: ${pOff}°, 侧倾偏置: ${rOff}° / 侧倾仪: ${tmOff}°)`);
     setTimeout(() => setFeedbackMsg(''), 4000);
   };
 
@@ -88,28 +133,32 @@ export const InclinometerCalibrationModal: React.FC<InclinometerCalibrationModal
 
   // Save changes
   const handleSave = () => {
+    const pOff = Number(pitchOffset.toFixed(1));
+    const rOff = Number(rollOffset.toFixed(1));
+    const tmOff = Number(rawTmRoll.toFixed(1));
+
     onUpdateSettings({
       spiritLevelOrientation: orientation,
-      spiritLevelPitchOffset: pitchOffset,
-      spiritLevelRollOffset: rollOffset,
+      spiritLevelPitchOffset: pOff,
+      spiritLevelRollOffset: rOff,
       spiritLevelGainFactor: gainFactor,
       spiritLevelUseGpsSlope: useGpsSlope,
       tiltMeterOrientation: orientation,
-      tiltMeterPitchOffset: pitchOffset,
-      tiltMeterRollOffset: rollOffset,
+      tiltMeterPitchOffset: pOff,
+      tiltMeterRollOffset: tmOff,
       tiltMeterGainFactor: gainFactor,
       tiltMeterUseGpsSlope: useGpsSlope,
       spirit_level: {
         ...settings.spirit_level,
-        pitchOffset,
-        rollOffset,
+        pitchOffset: pOff,
+        rollOffset: rOff,
         gainFactorPitch: gainFactor,
         gainFactorRoll: gainFactor,
         screenOrientation: orientation,
       },
       tilt_meter: {
         ...settings.tilt_meter,
-        zeroOffset: rollOffset,
+        zeroOffset: tmOff,
         gainFactorRoll: gainFactor,
         screenOrientation: orientation,
       },

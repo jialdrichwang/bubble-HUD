@@ -256,10 +256,40 @@ export default function App() {
     );
   }, [lang]);
 
-  // One-click zero calibration for tablet slanted resting angle ("因为平板是斜放的，要减去本身斜放了多少度")
-  const handleCalibrateZero = useCallback((currentPitch: number, currentRoll: number) => {
-    const pOff = Math.round(currentPitch);
-    const rOff = Math.round(currentRoll * 10) / 10;
+  // User Request: "一键校准斜角重新实现归零水平仪与侧倾仪"
+  const handleCalibrateZero = useCallback((customPitch?: number, customRoll?: number) => {
+    const orientation = bubbleSettings.spiritLevelOrientation || 'landscape';
+    const isSwapped = bubbleSettings.swapSpiritAndTiltParams ?? false;
+
+    // Use current telemetry if not specifically passed
+    const pSource = customPitch !== undefined ? customPitch : telemetry.pitchDeg;
+    const rSource = customRoll !== undefined ? customRoll : telemetry.rollDeg;
+
+    // 1. Calculate raw base for Spirit Level based on orientation & swap
+    let spPitch = orientation === 'landscape' ? pSource : rSource;
+    let spRoll = orientation === 'landscape' ? rSource : pSource;
+    if (isSwapped) {
+      const temp = spPitch;
+      spPitch = spRoll;
+      spRoll = temp;
+    }
+    const rawSpPitch = bubbleSettings.spiritLevelInvertPitch ? -spPitch : spPitch;
+    const rawSpRoll = bubbleSettings.spiritLevelInvertRoll ? -spRoll : spRoll;
+
+    // 2. Calculate raw base for Tilt Meter
+    let tmRoll = orientation === 'landscape' ? rSource : pSource;
+    let tmPitch = orientation === 'landscape' ? pSource : rSource;
+    if (isSwapped) {
+      const temp = tmRoll;
+      tmRoll = tmPitch;
+      tmPitch = temp;
+    }
+    const rawTmRoll = bubbleSettings.tiltMeterInvertRoll ? -tmRoll : tmRoll;
+
+    const pOff = Number(rawSpPitch.toFixed(1));
+    const rOff = Number(rawSpRoll.toFixed(1));
+    const tmOff = Number(rawTmRoll.toFixed(1));
+
     setBubbleSettings((prev) => ({
       ...prev,
       spirit_level: {
@@ -269,19 +299,29 @@ export default function App() {
       },
       tilt_meter: {
         ...prev.tilt_meter,
-        zeroOffset: rOff,
+        zeroOffset: tmOff,
       },
       spiritLevelPitchOffset: pOff,
       spiritLevelRollOffset: rOff,
       tiltMeterPitchOffset: pOff,
-      tiltMeterRollOffset: rOff,
+      tiltMeterRollOffset: tmOff,
     }));
+
     showToast(
       lang === 'en'
-        ? `Zero Calibrated: Pitch Offset = ${pOff}°, Roll Offset = ${rOff}°`
-        : `姿态基准已校准：俯仰偏置 ${pOff}°，侧倾偏置 ${rOff}°`
+        ? `Zero Calibrated: Spirit & Tilt set to 0.0° (P: ${pOff}°, R: ${rOff}°)`
+        : `一键校准斜角完成：水平仪与侧倾仪已精准归零 (0.0°)`
     );
-  }, [lang]);
+  }, [
+    telemetry.pitchDeg,
+    telemetry.rollDeg,
+    bubbleSettings.spiritLevelOrientation,
+    bubbleSettings.swapSpiritAndTiltParams,
+    bubbleSettings.spiritLevelInvertPitch,
+    bubbleSettings.spiritLevelInvertRoll,
+    bubbleSettings.tiltMeterInvertRoll,
+    lang,
+  ]);
 
   // User Request: "滑动栏增加一键参数归零，清理速度，行驶时间，距离等参数"
   const handleQuickZeroParams = useCallback(() => {
@@ -401,9 +441,7 @@ export default function App() {
         onResetArrangement={handleResetArrangement}
         currentTheme={currentTheme}
         onChangeTheme={setCurrentTheme}
-        onQuickZeroAll={() =>
-          handleCalibrateZero(telemetry.pitchDeg, telemetry.rollDeg)
-        }
+        onQuickZeroAll={() => handleCalibrateZero()}
         onQuickZeroParams={handleQuickZeroParams}
         onOpenPermissionsModal={() => setIsPermModalOpen(true)}
         swapSpiritAndTiltParams={bubbleSettings.swapSpiritAndTiltParams}

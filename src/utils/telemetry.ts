@@ -92,8 +92,8 @@ export function getInitialBubbleConfigs(containerWidth: number, containerHeight:
     { id: 'compass', color: '#10b981', zIndex: 12 },
     { id: 'weather', color: '#84cc16', zIndex: 6 },
     { id: 'timer', color: '#3b82f6', zIndex: 5 },
-    { id: 'speed_graph', color: '#ec4899', zIndex: 6 },
-    { id: 'accel_graph', color: '#f97316', zIndex: 6 },
+    { id: 'speed_graph', color: '#ef4444', zIndex: 6 }, // 红 bubble 10: 速度，速度值，速度时间曲线
+    { id: 'accel_graph', color: '#0ea5e9', zIndex: 6 }, // 蓝 bubble 11: 加速度，加速值，加速曲线
   ];
 
   if (isLandscape) {

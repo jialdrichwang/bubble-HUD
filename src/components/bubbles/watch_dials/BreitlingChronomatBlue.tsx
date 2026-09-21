@@ -52,7 +52,7 @@ export const BreitlingChronomatBlue: React.FC<WatchDialProps> = ({ now }) => {
 
         {/* Precision 60-Second Micro-Tick Chapter Ring on Outermost Edge Touching Metal Frame (用户需求：秒针刻度在钟面边缘最外边缘，贴外面钟面金属框) */}
         <circle cx="100" cy="100" r="97.5" fill="none" stroke="rgba(56, 189, 248, 0.5)" strokeWidth="0.6" />
-        <circle cx="100" cy="100" r="90" fill="none" stroke="rgba(255, 255, 255, 0.25)" strokeWidth="0.5" />
+        <circle cx="100" cy="100" r="92.5" fill="none" stroke="rgba(255, 255, 255, 0.25)" strokeWidth="0.5" />
         {Array.from({ length: 240 }).map((_, i) => {
           const deg = i * 1.5;
           const isSecond = i % 4 === 0;
@@ -61,7 +61,7 @@ export const BreitlingChronomatBlue: React.FC<WatchDialProps> = ({ now }) => {
             <line
               key={`blue-sec-${i}`}
               x1="100"
-              y1={isFive ? '10' : isSecond ? '7.5' : '5.5'}
+              y1={isFive ? '8.5' : isSecond ? '6.5' : '4.5'}
               x2="100"
               y2="2.5"
               stroke={isFive ? '#38bdf8' : isSecond ? '#ffffff' : 'rgba(255,255,255,0.3)'}
@@ -71,28 +71,51 @@ export const BreitlingChronomatBlue: React.FC<WatchDialProps> = ({ now }) => {
           );
         })}
 
-        {/* 24-Hour Chapter Ring inside the seconds ring */}
-        <circle cx="100" cy="100" r="89.5" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="0.6" />
-        <circle cx="100" cy="100" r="81" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="0.5" />
-
-        {/* 24-Hour Numerals */}
-        {[24, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22].map((hr, i) => {
+        {/* User Request: "外边一点60，5，10，15，20，25......55" (Outermost minute/second numerals) */}
+        {[60, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map((sec, i) => {
           const deg = i * 30;
           const rad = (deg - 90) * (Math.PI / 180);
-          const x = 100 + 85 * Math.cos(rad);
-          const y = 100 + 85 * Math.sin(rad) + 2;
+          const x = 100 + 88.5 * Math.cos(rad);
+          const y = 100 + 88.5 * Math.sin(rad) + 1.4;
           return (
             <text
-              key={`gmt-num-${hr}`}
+              key={`sec-num-${sec}`}
               x={x}
               y={y}
-              fill={hr === 24 || hr === 12 ? '#ef4444' : '#e2e8f0'}
-              fontSize="4.5"
+              fill={sec === 60 ? '#ef4444' : '#7dd3fc'}
+              fontSize="3.8"
+              fontWeight="600"
+              textAnchor="middle"
+              fontFamily="monospace, sans-serif"
+            >
+              {sec.toString()}
+            </text>
+          );
+        })}
+
+        {/* Delicate Separator Circle between outer 60-min ring and inner 12-hour ring */}
+        <circle cx="100" cy="100" r="84.5" fill="none" stroke="rgba(255,255,255,0.22)" strokeWidth="0.5" />
+        <circle cx="100" cy="100" r="73.5" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="0.5" />
+
+        {/* User Request: "外圈的数字不是24，02，04，而是12，1，2，3，4，5......11" (12-Hour Numerals Ring) */}
+        {[12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((hr, i) => {
+          if (hr === 6) return null; // Keep 6 open for the date window complication
+          const deg = i * 30;
+          const rad = (deg - 90) * (Math.PI / 180);
+          const x = 100 + 78.5 * Math.cos(rad);
+          const y = 100 + 78.5 * Math.sin(rad) + 2.0;
+          return (
+            <text
+              key={`hr-num-${hr}`}
+              x={x}
+              y={y}
+              fill={hr === 12 ? '#ffffff' : '#f1f5f9'}
+              fontSize="5.6"
               fontWeight="bold"
               textAnchor="middle"
               fontFamily="sans-serif"
             >
-              {hr.toString().padStart(2, '0')}
+              {hr.toString()}
             </text>
           );
         })}
@@ -116,14 +139,14 @@ export const BreitlingChronomatBlue: React.FC<WatchDialProps> = ({ now }) => {
           </text>
         </g>
 
-        {/* Faceted Silver Baton Hour Indices with Luminous Inserts */}
+        {/* Faceted Silver Baton Hour Indices with Luminous Inserts positioned inside the 12-hour ring */}
         {Array.from({ length: 12 }).map((_, i) => {
           if (i === 6) return null; // Date aperture at 6
           const deg = i * 30;
           return (
             <g key={`baton-blue-${i}`} transform={`rotate(${deg} 100 100)`}>
-              <rect x="98.5" y="26" width="3" height="15" fill="#e2e8f0" stroke="#0f172a" strokeWidth="0.5" rx="0.5" />
-              <rect x="99.2" y="28" width="1.6" height="6" fill="#38bdf8" opacity="0.9" />
+              <rect x="98.5" y="30" width="3" height="11" fill="#e2e8f0" stroke="#0f172a" strokeWidth="0.5" rx="0.5" />
+              <rect x="99.2" y="32" width="1.6" height="5" fill="#38bdf8" opacity="0.9" />
             </g>
           );
         })}

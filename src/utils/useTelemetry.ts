@@ -122,9 +122,10 @@ export function useTelemetry(isSimulated = true) {
         }
         const fusedHeading = blendAnglesDeg(magHeading, gpsBearing, gpsWeight);
 
-        const simulatedTurnRate = Math.sin(simPhase * 0.4);
-        const dynamicRoll = -(simulatedTurnRate * (newSpeed / 30) * 3.5) + (Math.random() - 0.5) * 0.4;
-        const dynamicPitch = (gForce * 6.0) + Math.sin(simPhase * 0.25) * 3.2;
+        // Vehicle attitude dynamics: Only oscillate pitch and roll when moving, so zero calibration locks stably at 0.0° when parked
+        const simulatedTurnRate = newSpeed > 2 ? Math.sin(simPhase * 0.4) : 0;
+        const dynamicRoll = -(simulatedTurnRate * (newSpeed / 30) * 3.5);
+        const dynamicPitch = (gForce * 6.0) + (newSpeed > 2 ? Math.sin(simPhase * 0.25) * 3.2 : 0);
 
         const kmTraveled = (newSpeed / 3600) * dt;
         const newTripDistance = prev.tripDistanceKm + kmTraveled;

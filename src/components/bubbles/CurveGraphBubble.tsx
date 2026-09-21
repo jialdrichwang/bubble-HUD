@@ -1,6 +1,5 @@
-import React, { useRef, useEffect, useState } from 'react';
-import { Activity, TrendingUp, Layers, Sliders, RefreshCw } from 'lucide-react';
-import { BubbleSettings, Language, TelemetryData } from '../../types';
+import React, { useRef, useEffect } from 'react';
+import { TelemetryData, BubbleSettings, Language } from '../../types';
 
 interface CurveGraphBubbleProps {
   type: 'speed' | 'accel';
@@ -11,48 +10,43 @@ interface CurveGraphBubbleProps {
   bubbleSize: number;
 }
 
+/**
+ * User Request Implementation:
+ * "是速度，速度值，速度时间曲线（红bubble 10）/ 加速度，加速值，加速曲线（蓝 bubble11）"
+ * "速度与加速时间曲线里面内容太多，全部精减，只留下坐标，中心的速度然后当前值，加速度然后当前值。
+ * 让空间出来给予曲线显示，用文字颜对应即时曲线，一张表，一个文字，一个数值，余下不要别的，
+ * 曲线做反指数处理，在速度曲线120以内变化明显，大于这个数，曲线动态辐度就变低，120-400,数值越大，增量越少,
+ * 加速曲线也是一样，因这没有在手参数，不知道那怕是赛车，加速在那个范围，设一个比较明显好看的加速时间曲线，
+ * 减少速度与加速度，在一个比较长时间低或过载显示状态。谢谢"
+ */
 export const CurveGraphBubble: React.FC<CurveGraphBubbleProps> = ({
   type,
   telemetry,
-  speedSettings,
-  accelSettings,
-  lang,
   bubbleSize,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isSpeed = type === 'speed';
 
-  // State: Curve Mode: 'merged_dual' (本图两线合并) or 'quad_merged' (4参数全合并同屏)
-  // 用户需求: "在速度与加速度时间曲线可以两线合并在一张图两个4个参数零点在中间"
-  const [displayMode, setDisplayMode] = useState<'merged_dual' | 'quad_merged'>('merged_dual');
+  const currentSpeed = telemetry.speedKmh ?? 0;
+  const currentG = telemetry.gForce ?? 0;
 
-  // Sensitivity multiplier: 用户需求 "波动辐度可以大一点...速度与加速度敏感性就可调高"
-  // Multipliers: 1x, 2x, 2.5x (default), 4x
-  const [sensitivity, setSensitivity] = useState<number>(2.5);
+  // History data points
+  const speedPoints = telemetry.speedHistoryShort && telemetry.speedHistoryShort.length > 0
+    ? telemetry.speedHistoryShort
+    : telemetry.speedHistory || [];
 
-  const cycleSensitivity = () => {
-    setSensitivity((prev) => {
-      if (prev === 1.0) return 2.0;
-      if (prev === 2.0) return 2.5;
-      if (prev === 2.5) return 4.0;
-      return 1.0;
-    });
-  };
+  const accelPoints = telemetry.accelHistoryShort && telemetry.accelHistoryShort.length > 0
+    ? telemetry.accelHistoryShort
+    : telemetry.accelHistory || [];
 
-  const speedShort = telemetry.speedHistoryShort || telemetry.speedHistory || [];
-  const speedLong = telemetry.speedHistoryLong || telemetry.speedHistory || [];
-  const accelShort = telemetry.accelHistoryShort || telemetry.accelHistory || [];
-  const accelLong = telemetry.accelHistoryLong || telemetry.accelHistory || [];
+  // Scaling factor for bubble size
+  const scale = (bubbleSize * 0.86) / 170;
 
-  // Content scale: occupies ~80% of bubble diameter when enlarged
-  const scale = (bubbleSize * 0.8) / 170;
-
-  // Colors as requested:
-  // 用户要求: "4个曲线颜色一个红、蓝，一个黄蓝，通过Y轴上的颜色文字提示可以区分曲线不同"
-  const COLOR_SPEED_SHORT = '#ef4444'; // 红 (Red: 实时短时速度)
-  const COLOR_SPEED_LONG = '#3b82f6';  // 蓝 (Blue: 长时均速)
-  const COLOR_ACCEL_SHORT = '#eab308'; // 黄 (Yellow: 瞬时短时加速度)
-  const COLOR_ACCEL_LONG = '#06b6d4';  // 蓝 (Cyan-Blue: 长时综合G值)
+  // Colors:
+  // 速度: 鲜红 (#ef4444)
+  // 加速度: 鲜蓝/天青蓝 (#38bdf8)
+  const COLOR_THEME = isSpeed ? '#ef4444' : '#38bdf8';
+  const COLOR_GLOW_START = isSpeed ? 'rgba(239, 68, 68, 0.28)' : 'rgba(56, 189, 248, 0.28)';
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -64,274 +58,321 @@ export const CurveGraphBubble: React.FC<CurveGraphBubbleProps> = ({
     const height = canvas.height;
     ctx.clearRect(0, 0, width, height);
 
-    // 1. Zero-point right in the middle: 用户要求 "零点在中间"
-    const zeroY = height * 0.5;
+    const padL = 26; // Left margin for coordinate labels
+    const padR = 8;
+    const padT = 8;
+    const padB = 8;
+    const plotW = width - padL - padR;
+    const plotH = height - padT - padB;
 
-    // Background horizontal guideline grid
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+    ctx.font = '8px monospace';
+    ctx.textBaseline = 'middle';
+
+    // 垂直时间网格分割线
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)';
+    ctx.lineWidth = 1;
+    for (let f = 0.25; f < 1; f += 0.25) {
+      const gx = padL + plotW * f;
+      ctx.beginPath();
+      ctx.moveTo(gx, padT);
+      ctx.lineTo(gx, height - padB);
+      ctx.stroke();
+    }
+
+    // 左侧 Y 轴主垂直标尺轴线
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(8, height * 0.25);
-    ctx.lineTo(width - 8, height * 0.25);
-    ctx.moveTo(8, height * 0.75);
-    ctx.lineTo(width - 8, height * 0.75);
+    ctx.moveTo(padL, padT);
+    ctx.lineTo(padL, height - padB);
     ctx.stroke();
 
-    // Prominent Center Zero Baseline (零点基线)
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
-    ctx.lineWidth = 1.2;
-    ctx.setLineDash([3, 2]);
-    ctx.beginPath();
-    ctx.moveTo(6, zeroY);
-    ctx.lineTo(width - 6, zeroY);
-    ctx.stroke();
-    ctx.setLineDash([]);
+    if (isSpeed) {
+      // -------------------------------------------------------------
+      // 【速度，速度值，速度时间曲线（红 bubble 10）】
+      // -------------------------------------------------------------
+      // 速度大于等于0，因此0基准线位于图表底部，将全部垂直高度给予速度波形
+      const zeroY = height - padB - 2;
+      const maxH = plotH - 4;
 
-    // Helper to draw a single smooth line onto the canvas
-    const drawLine = (
-      data: { time: number; speedKmh?: number; gForce?: number }[],
-      valueGetter: (item: any) => number,
-      maxReference: number,
-      strokeColor: string,
-      lineWidth: number,
-      isDashed = false,
-      fillGradient = false
-    ) => {
-      if (!data || data.length < 2) return;
-      const len = data.length;
-      const stepX = (width - 24) / Math.max(len - 1, 1);
-      const points: { x: number; y: number }[] = [];
-
-      for (let i = 0; i < len; i++) {
-        const val = valueGetter(data[i]);
-        const x = 12 + i * stepX;
-        // Calculate deflection from zero center with sensitivity multiplier
-        // "波动辐度可以大一点，速度与加速度敏感性就可调高"
-        const normalized = (val / Math.max(maxReference, 1)) * sensitivity;
-        const deflection = normalized * (height * 0.42);
-        const y = Math.max(3, Math.min(height - 3, zeroY - deflection));
-        points.push({ x, y });
-      }
-
-      // Optional subtle gradient fill under the curve
-      if (fillGradient && points.length > 0) {
-        ctx.beginPath();
-        ctx.moveTo(points[0].x, zeroY);
-        for (let i = 0; i < points.length; i++) {
-          ctx.lineTo(points[i].x, points[i].y);
+      // 反指数映射: 0~120 km/h 变化明显 (占 65% 幅度); 120~400 km/h 数值越大增量越少
+      const getSpeedY = (sp: number): number => {
+        const s = Math.max(0, sp);
+        let norm: number;
+        if (s <= 120) {
+          norm = (s / 120) * 0.65;
+        } else {
+          const excess = s - 120;
+          const compression = 1 - Math.exp(-excess / 120);
+          norm = 0.65 + 0.32 * compression;
         }
-        ctx.lineTo(points[points.length - 1].x, zeroY);
+        return zeroY - norm * maxH;
+      };
+
+      // 400 km/h 顶部参考线
+      const topLimitY = zeroY - 0.97 * maxH;
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+      ctx.beginPath();
+      ctx.moveTo(padL, topLimitY);
+      ctx.lineTo(width - padR, topLimitY);
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+      ctx.textAlign = 'right';
+      ctx.fillText('400', padL - 4, topLimitY);
+
+      // 120 km/h 灵敏度临界拐点参考虚线
+      const line120Y = getSpeedY(120);
+      ctx.strokeStyle = 'rgba(239, 68, 68, 0.25)';
+      ctx.setLineDash([2, 3]);
+      ctx.beginPath();
+      ctx.moveTo(padL, line120Y);
+      ctx.lineTo(width - padR, line120Y);
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(239, 68, 68, 0.7)';
+      ctx.fillText('120', padL - 4, line120Y);
+
+      // 0 基线 (底部实线)
+      ctx.setLineDash([]);
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(padL, zeroY);
+      ctx.lineTo(width - padR, zeroY);
+      ctx.stroke();
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText('0', padL - 4, zeroY);
+
+      // 绘制速度时间曲线 (红色)
+      if (speedPoints.length > 1) {
+        const len = speedPoints.length;
+        const stepX = plotW / Math.max(len - 1, 1);
+        const curvePoints: { x: number; y: number }[] = [];
+
+        for (let i = 0; i < len; i++) {
+          const sp = speedPoints[i].speedKmh ?? 0;
+          const x = padL + i * stepX;
+          const y = getSpeedY(sp);
+          curvePoints.push({ x, y });
+        }
+
+        // 曲线下方红色渐变填充
+        ctx.beginPath();
+        ctx.moveTo(curvePoints[0].x, zeroY);
+        for (let i = 0; i < len; i++) {
+          ctx.lineTo(curvePoints[i].x, curvePoints[i].y);
+        }
+        ctx.lineTo(curvePoints[len - 1].x, zeroY);
         ctx.closePath();
-        const grad = ctx.createLinearGradient(0, 0, 0, height);
-        grad.addColorStop(0, `${strokeColor}40`);
-        grad.addColorStop(1, `${strokeColor}05`);
+        const grad = ctx.createLinearGradient(0, padT, 0, zeroY);
+        grad.addColorStop(0, COLOR_GLOW_START);
+        grad.addColorStop(1, 'rgba(239, 68, 68, 0.01)');
         ctx.fillStyle = grad;
         ctx.fill();
-      }
 
-      // Draw stroke
-      ctx.beginPath();
-      ctx.moveTo(points[0].x, points[0].y);
-      for (let i = 1; i < points.length; i++) {
-        ctx.lineTo(points[i].x, points[i].y);
-      }
-      ctx.strokeStyle = strokeColor;
-      ctx.lineWidth = lineWidth;
-      if (isDashed) {
-        ctx.setLineDash([4, 2]);
-      } else {
-        ctx.setLineDash([]);
-      }
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      ctx.stroke();
-      ctx.setLineDash([]);
-
-      // Live cursor indicator on last point
-      if (points.length > 0) {
-        const last = points[points.length - 1];
+        // 曲线主线条
         ctx.beginPath();
-        ctx.arc(last.x, last.y, 2.8, 0, Math.PI * 2);
+        ctx.moveTo(curvePoints[0].x, curvePoints[0].y);
+        for (let i = 1; i < len; i++) {
+          ctx.lineTo(curvePoints[i].x, curvePoints[i].y);
+        }
+        ctx.strokeStyle = COLOR_THEME;
+        ctx.lineWidth = 2.4;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.stroke();
+
+        // 实时最新点指示光标
+        const lastPt = curvePoints[len - 1];
+        ctx.beginPath();
+        ctx.arc(lastPt.x, lastPt.y, 3.2, 0, Math.PI * 2);
         ctx.fillStyle = '#ffffff';
         ctx.fill();
-        ctx.strokeStyle = strokeColor;
-        ctx.lineWidth = 1.2;
+        ctx.strokeStyle = COLOR_THEME;
+        ctx.lineWidth = 1.8;
         ctx.stroke();
       }
-    };
+    } else {
+      // -------------------------------------------------------------
+      // 【加速度，加速值，加速曲线（蓝 bubble 11）】
+      // -------------------------------------------------------------
+      // 加速度有正加速与负制动，零点在正中心
+      const zeroY = padT + plotH * 0.5;
+      const maxDeflection = plotH * 0.46;
 
-    // Determine which lines to draw
-    const showAllFour = displayMode === 'quad_merged';
+      // 反指数映射: 0~±0.35G 变化明显 (占 65% 幅度); ±0.35G~±2.0G+ 反指数平滑压缩
+      const getAccelY = (g: number): number => {
+        const absG = Math.abs(g);
+        let norm: number;
+        if (absG <= 0.35) {
+          norm = (absG / 0.35) * 0.65;
+        } else {
+          const excess = absG - 0.35;
+          const compression = 1 - Math.exp(-excess / 0.7);
+          norm = 0.65 + 0.32 * compression;
+        }
+        const sign = g >= 0 ? 1 : -1;
+        return zeroY - sign * norm * maxDeflection;
+      };
 
-    if (showAllFour || isSpeed) {
-      // Line 1: 实时短时速度 (Red / 红)
-      drawLine(
-        speedShort,
-        (d) => d.speedKmh ?? 0,
-        speedSettings.maxScale || 120,
-        COLOR_SPEED_SHORT,
-        2.0,
-        false,
-        !showAllFour
-      );
+      // +2.0G 顶部上限
+      const topLimitY = zeroY - 0.97 * maxDeflection;
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+      ctx.beginPath();
+      ctx.moveTo(padL, topLimitY);
+      ctx.lineTo(width - padR, topLimitY);
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+      ctx.textAlign = 'right';
+      ctx.fillText('+2G', padL - 4, topLimitY);
 
-      // Line 2: 长时平均速度 (Blue / 蓝)
-      drawLine(
-        speedLong,
-        (d) => d.speedKmh ?? 0,
-        speedSettings.maxScale || 120,
-        COLOR_SPEED_LONG,
-        1.6,
-        true,
-        false
-      );
+      // +0.35G 灵敏度拐点参考线
+      const linePos035Y = getAccelY(0.35);
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.25)';
+      ctx.setLineDash([2, 3]);
+      ctx.beginPath();
+      ctx.moveTo(padL, linePos035Y);
+      ctx.lineTo(width - padR, linePos035Y);
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(56, 189, 248, 0.7)';
+      ctx.fillText('+G', padL - 4, linePos035Y);
+
+      // -0.35G 制动灵敏度拐点参考线
+      const lineNeg035Y = getAccelY(-0.35);
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.25)';
+      ctx.beginPath();
+      ctx.moveTo(padL, lineNeg035Y);
+      ctx.lineTo(width - padR, lineNeg035Y);
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(56, 189, 248, 0.7)';
+      ctx.fillText('-G', padL - 4, lineNeg035Y);
+
+      // -2.0G 底部下限
+      const btmLimitY = zeroY + 0.97 * maxDeflection;
+      ctx.setLineDash([]);
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+      ctx.beginPath();
+      ctx.moveTo(padL, btmLimitY);
+      ctx.lineTo(width - padR, btmLimitY);
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+      ctx.fillText('-2G', padL - 4, btmLimitY);
+
+      // 中心 0 基线 (高对比度零点基线)
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(padL, zeroY);
+      ctx.lineTo(width - padR, zeroY);
+      ctx.stroke();
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText('0', padL - 4, zeroY);
+
+      // 绘制加速度时间曲线 (蓝色)
+      if (accelPoints.length > 1) {
+        const len = accelPoints.length;
+        const stepX = plotW / Math.max(len - 1, 1);
+        const curvePoints: { x: number; y: number }[] = [];
+
+        for (let i = 0; i < len; i++) {
+          const g = accelPoints[i].gForce ?? 0;
+          const x = padL + i * stepX;
+          const y = getAccelY(g);
+          curvePoints.push({ x, y });
+        }
+
+        // 曲线与零线之间蓝色微光填充
+        ctx.beginPath();
+        ctx.moveTo(curvePoints[0].x, zeroY);
+        for (let i = 0; i < len; i++) {
+          ctx.lineTo(curvePoints[i].x, curvePoints[i].y);
+        }
+        ctx.lineTo(curvePoints[len - 1].x, zeroY);
+        ctx.closePath();
+        const grad = ctx.createLinearGradient(0, padT, 0, height - padB);
+        grad.addColorStop(0, COLOR_GLOW_START);
+        grad.addColorStop(0.5, 'rgba(56, 189, 248, 0.02)');
+        grad.addColorStop(1, COLOR_GLOW_START);
+        ctx.fillStyle = grad;
+        ctx.fill();
+
+        // 曲线主线条
+        ctx.beginPath();
+        ctx.moveTo(curvePoints[0].x, curvePoints[0].y);
+        for (let i = 1; i < len; i++) {
+          ctx.lineTo(curvePoints[i].x, curvePoints[i].y);
+        }
+        ctx.strokeStyle = COLOR_THEME;
+        ctx.lineWidth = 2.4;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.stroke();
+
+        // 实时最新点指示光标
+        const lastPt = curvePoints[len - 1];
+        ctx.beginPath();
+        ctx.arc(lastPt.x, lastPt.y, 3.2, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+        ctx.strokeStyle = COLOR_THEME;
+        ctx.lineWidth = 1.8;
+        ctx.stroke();
+      }
     }
-
-    if (showAllFour || !isSpeed) {
-      // Line 3: 瞬时短时加速度 (Yellow / 黄)
-      drawLine(
-        accelShort,
-        (d) => d.gForce ?? 0,
-        accelSettings.maxG || 1.5,
-        COLOR_ACCEL_SHORT,
-        2.0,
-        false,
-        !showAllFour
-      );
-
-      // Line 4: 长时综合加速度 (Cyan-Blue / 蓝)
-      drawLine(
-        accelLong,
-        (d) => d.gForce ?? 0,
-        accelSettings.maxG || 1.5,
-        COLOR_ACCEL_LONG,
-        1.6,
-        true,
-        false
-      );
-    }
-  }, [
-    speedShort,
-    speedLong,
-    accelShort,
-    accelLong,
-    displayMode,
-    isSpeed,
-    sensitivity,
-    speedSettings.maxScale,
-    accelSettings.maxG,
-  ]);
-
-  const currentSpeed = telemetry.speedKmh;
-  const currentG = telemetry.gForce;
-
-  const headerTitle = displayMode === 'quad_merged'
-    ? (lang === 'en' ? '4-PARAM MERGED' : '4参数同屏合并曲线')
-    : isSpeed
-    ? (lang === 'en' ? 'SPEED DUAL CURVES' : '速度双线合并曲线')
-    : (lang === 'en' ? 'ACCEL DUAL CURVES' : '加速度双线合并曲线');
+  }, [isSpeed, speedPoints, accelPoints, currentSpeed, currentG]);
 
   return (
     <div
-      className="w-full h-full relative flex flex-col items-center justify-center text-center select-none"
+      className="w-full h-full relative flex flex-col items-center justify-between p-2 select-none overflow-hidden"
       style={{ transform: `scale(${scale})`, transformOrigin: 'center center' }}
     >
-      <div className="flex flex-col items-center justify-center gap-0.5 w-full max-w-[150px]">
-        {/* Top Header with title & real-time badge */}
-        <div className="w-full flex items-center justify-between px-1">
-          <div className="flex items-center gap-1">
-            {isSpeed ? (
-              <TrendingUp className="w-3 h-3 text-red-400" />
-            ) : (
-              <Activity className="w-3 h-3 text-amber-400" />
-            )}
-            <span className="text-[9.5px] font-bold tracking-tight text-slate-200 truncate">
-              {headerTitle}
+      {/* 
+        用户要求：
+        "一张表，一个文字，一个数值，余下不要别的，用文字颜对应即时曲线"
+        - 红 bubble 10: 速度，速度值，速度时间曲线
+        - 蓝 bubble 11: 加速度，加速值，加速曲线
+      */}
+      <div className="flex items-center justify-center w-full px-2 pt-0.5 shrink-0 z-10 select-none">
+        {isSpeed ? (
+          <div className="flex items-baseline gap-1.5 font-mono">
+            <span className="text-[12px] font-black text-red-500 tracking-wider drop-shadow-[0_0_8px_rgba(239,68,68,0.7)]">
+              速度
+            </span>
+            <span className="text-[20px] font-black text-red-400 tracking-tight drop-shadow-[0_0_12px_rgba(239,68,68,0.9)]">
+              {currentSpeed.toFixed(0)}
+            </span>
+            <span className="text-[10px] text-red-300 font-bold opacity-85">
+              km/h
             </span>
           </div>
-
-          {/* Mode Switcher Pill */}
-          <button
-            onClick={() => setDisplayMode(displayMode === 'merged_dual' ? 'quad_merged' : 'merged_dual')}
-            title="点击切换：两线合并 / 4参数全合并"
-            className="flex items-center gap-0.5 px-1 py-0.5 rounded bg-slate-800/80 hover:bg-slate-700 text-[8px] font-mono text-cyan-300 border border-slate-700 active:scale-95 transition-all"
-          >
-            <RefreshCw className="w-2.5 h-2.5" />
-            <span>{displayMode === 'quad_merged' ? '4合1' : '双线'}</span>
-          </button>
-        </div>
-
-        {/* Real-time value indicators */}
-        <div className="w-full flex items-center justify-between px-1.5 py-0.5 bg-slate-950/70 rounded border border-white/10 font-mono text-[9px]">
-          <div className="flex items-center gap-1.5">
-            <span className="flex items-center gap-1 text-red-400 font-bold">
-              <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-              {currentSpeed.toFixed(0)} <span className="text-[7.5px] text-slate-400">km/h</span>
+        ) : (
+          <div className="flex items-baseline gap-1.5 font-mono">
+            <span className="text-[12px] font-black text-sky-400 tracking-wider drop-shadow-[0_0_8px_rgba(56,189,248,0.7)]">
+              加速度
             </span>
-            <span className="flex items-center gap-1 text-amber-300 font-bold">
-              <span className="w-1.5 h-1.5 rounded-full bg-yellow-400" />
-              {currentG >= 0 ? `+${currentG.toFixed(2)}` : currentG.toFixed(2)} <span className="text-[7.5px] text-slate-400">G</span>
+            <span className="text-[20px] font-black text-sky-300 tracking-tight drop-shadow-[0_0_12px_rgba(56,189,248,0.9)]">
+              {currentG >= 0 ? `+${currentG.toFixed(2)}` : currentG.toFixed(2)}
+            </span>
+            <span className="text-[10px] text-sky-200 font-bold opacity-85">
+              G
             </span>
           </div>
-          <button
-            onClick={cycleSensitivity}
-            title="点击切换曲线波动敏感度 (提高波动幅度)"
-            className="text-[8px] px-1 rounded bg-indigo-950 text-indigo-300 border border-indigo-700/60 font-semibold active:scale-95"
-          >
-            敏度:×{sensitivity}
-          </button>
-        </div>
+        )}
+      </div>
 
-        {/* Central Merged Canvas Stage with Y-Axis Color Coded Text (零点在中间) */}
-        {/* 用户要求: "（4个曲线颜色一个红、蓝，一个黄蓝，通过Y轴上的颜色文字提示可以区分曲线不同）" */}
-        <div className="relative w-full h-[76px] bg-slate-950/90 rounded border border-slate-700/80 p-0.5 flex items-center justify-center overflow-hidden">
-          {/* Left Y-Axis Color-Coded Labels (Speed Parameters) */}
-          <div className="absolute left-0.5 inset-y-0 flex flex-col justify-between py-1 z-10 pointer-events-none text-[7px] font-mono leading-none font-bold">
-            <span className="text-red-400 drop-shadow-[0_0_4px_rgba(239,68,68,0.8)]">
-              ▲红:短速
-            </span>
-            <span className="text-slate-400 bg-slate-900/80 px-0.5 rounded border border-white/10">
-              — 0基线 —
-            </span>
-            <span className="text-blue-400 drop-shadow-[0_0_4px_rgba(59,130,246,0.8)]">
-              ▼蓝:长速
-            </span>
-          </div>
-
-          {/* Right Y-Axis Color-Coded Labels (Accel Parameters) */}
-          <div className="absolute right-0.5 inset-y-0 flex flex-col justify-between py-1 z-10 pointer-events-none text-[7px] font-mono leading-none font-bold text-right">
-            <span className="text-yellow-400 drop-shadow-[0_0_4px_rgba(234,179,8,0.8)]">
-              黄:瞬G▲
-            </span>
-            <span className="text-slate-400 bg-slate-900/80 px-0.5 rounded border border-white/10">
-              — 0基线 —
-            </span>
-            <span className="text-cyan-400 drop-shadow-[0_0_4px_rgba(6,182,212,0.8)]">
-              蓝:长G▼
-            </span>
-          </div>
-
-          {/* High-Resolution HTML5 Canvas */}
-          <canvas
-            ref={canvasRef}
-            width={146}
-            height={74}
-            className="w-full h-full"
-          />
-        </div>
-
-        {/* Bottom Legend & Status Bar */}
-        <div className="w-full flex items-center justify-between px-1 text-[8px] font-mono text-slate-400 pt-0.5">
-          <div className="flex items-center gap-1">
-            <span className="text-red-400 font-bold">●红</span>
-            <span className="text-blue-400 font-bold">●蓝(速)</span>
-            <span className="text-yellow-400 font-bold">●黄</span>
-            <span className="text-cyan-400 font-bold">●蓝(加)</span>
-          </div>
-          <span className="text-slate-400">
-            {displayMode === 'quad_merged' ? '4线合并' : isSpeed ? '双线合并' : '加速合并'}
-          </span>
-        </div>
+      {/* 
+        全屏纯净图表，最大化曲线显示空间 ("一张表，只留下坐标，让空间出来给予曲线显示，余下不要别的")
+      */}
+      <div
+        className={`relative w-full flex-1 mt-1 rounded-lg bg-slate-950/90 border overflow-hidden flex items-center justify-center shadow-inner ${
+          isSpeed ? 'border-red-950/60' : 'border-sky-950/60'
+        }`}
+      >
+        <canvas
+          ref={canvasRef}
+          width={240}
+          height={124}
+          className="w-full h-full block"
+        />
       </div>
     </div>
   );

@@ -23,7 +23,7 @@ export const TiltMeterBubble: React.FC<TiltMeterBubbleProps> = ({
 }) => {
   // Screen orientation axis mapping & learned calibration parameters
   const orientation = allSettings?.spiritLevelOrientation || settings.screenOrientation || 'landscape';
-  const rollOffset = allSettings?.spiritLevelRollOffset ?? settings.zeroOffset ?? 0;
+  const rollOffset = allSettings?.tiltMeterRollOffset ?? allSettings?.spiritLevelRollOffset ?? settings.zeroOffset ?? 0;
   const gainFactor = allSettings?.spiritLevelGainFactor ?? settings.gainFactorRoll ?? 1.0;
 
   // Swapping and Inversion Flags (顶部滑动菜单设置)
