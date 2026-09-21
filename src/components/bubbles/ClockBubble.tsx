@@ -1,0 +1,641 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { BubbleSettings, Language } from '../../types';
+import { BreitlingNavitimerWhite } from './watch_dials/BreitlingNavitimerWhite';
+import { BreitlingNavitimerGreen } from './watch_dials/BreitlingNavitimerGreen';
+import { BreitlingChronomatBlue } from './watch_dials/BreitlingChronomatBlue';
+import { IwcPortugieser } from './watch_dials/IwcPortugieser';
+
+interface ClockBubbleProps {
+  settings: BubbleSettings['clock'];
+  lang: Language;
+  bubbleSize: number;
+  gpsTimestamp?: number;
+}
+
+const ROMAN_NUMERALS = [
+  'XII', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI'
+];
+
+export const ClockBubble: React.FC<ClockBubbleProps> = ({
+  settings,
+  lang,
+  bubbleSize,
+  gpsTimestamp,
+}) => {
+  const [nowMs, setNowMs] = useState<number>(Date.now());
+  const gpsAnchorRef = useRef<{ gpsTime: number; localPerf: number } | null>(null);
+
+  // Synchronize strictly with GPS satellite atomic time ("时钟泡泡设置自定义时区时严格锁定GPS时间")
+  useEffect(() => {
+    if (gpsTimestamp) {
+      gpsAnchorRef.current = {
+        gpsTime: gpsTimestamp,
+        localPerf: performance.now(),
+      };
+    }
+  }, [gpsTimestamp]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      let currentEpochMs: number;
+      if (gpsAnchorRef.current) {
+        const elapsed = performance.now() - gpsAnchorRef.current.localPerf;
+        currentEpochMs = gpsAnchorRef.current.gpsTime + elapsed;
+      } else {
+        currentEpochMs = Date.now();
+      }
+      setNowMs(currentEpochMs);
+    }, 100);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Convert current UTC / GPS / system time according to configured timezone
+  // "时钟泡泡设置自定义时区时严格锁定GPS时间"
+  // GPS broadcasts UTC atomic standard time. When custom timezone is enabled (e.g. UTC+8),
+  // we strictly anchor to the GPS UTC base timestamp and apply the exact offset hours.
+  const displayNow = React.useMemo(() => {
+    let baseGpsUtcMs = nowMs;
+    if (gpsAnchorRef.current) {
+      const elapsed = performance.now() - gpsAnchorRef.current.localPerf;
+      baseGpsUtcMs = gpsAnchorRef.current.gpsTime + elapsed;
+    }
+
+    if (settings.timezoneMode === 'custom' && settings.timezoneOffsetHours !== undefined) {
+      // Calculate target UTC epoch: baseGpsUtcMs + offset
+      // Shift by local browser getTimezoneOffset so that standard getHours(), getMinutes(),
+      // getDate(), getMonth(), getDay() render the exact target timezone:
+      const localOffsetMs = new Date().getTimezoneOffset() * 60 * 1000;
+      const customOffsetMs = settings.timezoneOffsetHours * 3600 * 1000;
+      return new Date(baseGpsUtcMs + localOffsetMs + customOffsetMs);
+    }
+    return new Date(baseGpsUtcMs);
+  }, [nowMs, settings.timezoneMode, settings.timezoneOffsetHours]);
+
+  const timezoneBadge = React.useMemo(() => {
+    if (settings.timezoneMode === 'custom' && settings.timezoneOffsetHours !== undefined) {
+      const sign = settings.timezoneOffsetHours >= 0 ? '+' : '';
+      return settings.timezoneName || `UTC${sign}${settings.timezoneOffsetHours}`;
+    }
+    const localOffset = -new Date().getTimezoneOffset() / 60;
+    const sign = localOffset >= 0 ? '+' : '';
+    return lang === 'en' ? `Local (UTC${sign}${localOffset})` : `本地 (UTC${sign}${localOffset})`;
+  }, [settings.timezoneMode, settings.timezoneOffsetHours, settings.timezoneName, lang]);
+
+  const hours = displayNow.getHours();
+  const minutes = displayNow.getMinutes();
+  const seconds = displayNow.getSeconds();
+  const milliseconds = displayNow.getMilliseconds();
+
+  // Angular degrees for smooth hands
+  const secondDeg = (seconds + milliseconds / 1000) * 6;
+  const minuteDeg = (minutes + seconds / 60) * 6;
+  const hourDeg = ((hours % 12) + minutes / 60) * 30;
+
+  const hoursDisplay = settings.is24Hour
+    ? hours.toString().padStart(2, '0')
+    : ((hours % 12) || 12).toString().padStart(2, '0');
+  const minutesDisplay = minutes.toString().padStart(2, '0');
+  const secondsDisplay = seconds.toString().padStart(2, '0');
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+
+  // Formatted date string (月日显示)
+  const monthNum = displayNow.getMonth() + 1;
+  const dayNum = displayNow.getDate();
+  const weekDaysZh = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+  const weekDaysEn = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+  const weekStr = lang === 'en' ? weekDaysEn[displayNow.getDay()] : weekDaysZh[displayNow.getDay()];
+  const dateStr = lang === 'en' ? `${monthNum}/${dayNum} ${weekStr}` : `${monthNum}月${dayNum}日 ${weekStr}`;
+
+  // Content scale: proportionally scaled so it occupies ~80% of bubble diameter when enlarged
+  // "泡泡放大后，里面内容最终放大约占泡泡80%左右"
+  const scale = (bubbleSize * 0.80) / 176;
+
+  const style = settings.style || 'roman';
+  const showDate = settings.showDate !== false;
+
+  const hasGpsFix = Boolean(gpsTimestamp || gpsAnchorRef.current);
+
+  const renderTimezoneTag = () => {
+    if (settings.timezoneMode === 'custom') {
+      return (
+        <div className="absolute bottom-1.5 px-2 py-0.5 rounded-full bg-black/90 border border-emerald-500/60 text-[7.5px] font-mono text-emerald-300 z-10 pointer-events-none shadow flex items-center gap-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+          <span className="text-emerald-300 font-bold">GPS锁定</span>
+          <span className="text-white/40">·</span>
+          <span>{timezoneBadge}</span>
+        </div>
+      );
+    }
+    if (hasGpsFix) {
+      return (
+        <div className="absolute bottom-1.5 px-2 py-0.5 rounded-full bg-black/90 border border-emerald-500/50 text-[7.5px] font-mono text-emerald-300 z-10 pointer-events-none shadow flex items-center gap-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+          <span>GPS时间</span>
+          <span className="text-white/40">·</span>
+          <span>{timezoneBadge}</span>
+        </div>
+      );
+    }
+    return (
+      <div className="absolute bottom-1.5 px-2 py-0.5 rounded-full bg-black/85 border border-slate-700 text-[7.5px] font-mono text-slate-400 z-10 pointer-events-none shadow">
+        {timezoneBadge}
+      </div>
+    );
+  };
+
+  // UPLOADED DIAL 1: Breitling Navitimer White (15526423908069.jpg)
+  if (style === 'breitling_navitimer_white') {
+    return (
+      <div
+        className="w-full h-full relative flex flex-col items-center justify-center text-center select-none"
+        style={{ transform: `scale(${scale})`, transformOrigin: 'center center' }}
+      >
+        <BreitlingNavitimerWhite now={displayNow} />
+        {renderTimezoneTag()}
+      </div>
+    );
+  }
+
+  // UPLOADED DIAL 2: Breitling Navitimer Mint Green (16501376553089.jpg.jpg)
+  if (style === 'breitling_navitimer_green') {
+    return (
+      <div
+        className="w-full h-full relative flex flex-col items-center justify-center text-center select-none"
+        style={{ transform: `scale(${scale})`, transformOrigin: 'center center' }}
+      >
+        <BreitlingNavitimerGreen now={displayNow} />
+        {renderTimezoneTag()}
+      </div>
+    );
+  }
+
+  // UPLOADED DIAL 3: Breitling Chronomat GMT Deep Blue (10210817387396618.jpg)
+  if (style === 'breitling_chronomat_blue') {
+    return (
+      <div
+        className="w-full h-full relative flex flex-col items-center justify-center text-center select-none"
+        style={{ transform: `scale(${scale})`, transformOrigin: 'center center' }}
+      >
+        <BreitlingChronomatBlue now={displayNow} />
+        {renderTimezoneTag()}
+      </div>
+    );
+  }
+
+  // UPLOADED DIAL 4: IWC Portugieser Chronograph (9644b9b01e229559.jpg)
+  if (style === 'iwc_portugieser') {
+    return (
+      <div
+        className="w-full h-full relative flex flex-col items-center justify-center text-center select-none"
+        style={{ transform: `scale(${scale})`, transformOrigin: 'center center' }}
+      >
+        <IwcPortugieser now={displayNow} />
+        {renderTimezoneTag()}
+      </div>
+    );
+  }
+
+  // 1. ROMAN CLASSIC CLOCK (罗马钟表)
+  if (style === 'roman') {
+    return (
+      <div
+        className="w-full h-full relative flex flex-col items-center justify-center text-center select-none"
+        style={{ transform: `scale(${scale})`, transformOrigin: 'center center' }}
+      >
+        {/* Roman Dial Face (180x180 reference box) */}
+        <div className="relative w-44 h-44 rounded-full flex items-center justify-center pointer-events-none">
+          {/* Railroad Minute Track & Chapter Ring */}
+          <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 180 180">
+            {/* Outer and Inner Circle Rings */}
+            <circle cx="90" cy="90" r="82" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="1" />
+            <circle cx="90" cy="90" r="78" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="0.8" />
+            <circle cx="90" cy="90" r="54" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="0.8" />
+
+            {/* 60 Minute Chapter Track Marks */}
+            {Array.from({ length: 60 }).map((_, i) => {
+              const deg = i * 6;
+              const isHour = i % 5 === 0;
+              return (
+                <line
+                  key={i}
+                  x1="90"
+                  y1={isHour ? '78' : '80'}
+                  x2="90"
+                  y2="82"
+                  stroke={isHour ? '#f59e0b' : 'rgba(255,255,255,0.3)'}
+                  strokeWidth={isHour ? '1.5' : '0.8'}
+                  transform={`rotate(${deg} 90 90)`}
+                />
+              );
+            })}
+          </svg>
+
+          {/* 12 Roman Numerals positioned radially */}
+          {ROMAN_NUMERALS.map((roman, i) => {
+            const angleDeg = i * 30;
+            const rad = (angleDeg - 90) * (Math.PI / 180);
+            // Radius for Roman numeral text: 64px from center (90, 90)
+            const x = 90 + 64 * Math.cos(rad);
+            const y = 90 + 64 * Math.sin(rad);
+
+            return (
+              <div
+                key={roman}
+                className="absolute font-serif font-bold text-amber-200/90 text-[10px] tracking-tighter"
+                style={{
+                  left: `${x}px`,
+                  top: `${y}px`,
+                  transform: 'translate(-50%, -50%)',
+                }}
+              >
+                {roman}
+              </div>
+            );
+          })}
+
+          {/* Luxury Date Window Complication (月日显示 at 3 o'clock / 6 o'clock) */}
+          {showDate && (
+            <div
+              className="absolute bottom-9 flex items-center justify-center px-1.5 py-0.5 rounded bg-amber-950/70 border border-amber-500/40 shadow-sm z-10"
+              style={{ backdropFilter: 'blur(4px)' }}
+            >
+              <span className="font-mono text-[9px] font-bold text-amber-300 tracking-tight">
+                {dateStr}
+              </span>
+            </div>
+          )}
+
+          {/* Brand/Model Subtext */}
+          <div className="absolute top-10 flex flex-col items-center">
+            <span className="text-[7.5px] font-mono tracking-widest text-slate-400 uppercase font-semibold">
+              CHRONOMETER
+            </span>
+          </div>
+
+          {/* Clock Hands */}
+          <div className="relative w-full h-full flex items-center justify-center pointer-events-none">
+            {/* Hour Hand (Classic Roman faceted hand) */}
+            <div
+              className="absolute w-1 bg-gradient-to-t from-amber-400 to-amber-100 rounded-full origin-bottom shadow-lg"
+              style={{
+                height: '42px',
+                bottom: '90px',
+                transform: `rotate(${hourDeg}deg)`,
+                transition: 'transform 0.05s linear',
+              }}
+            />
+
+            {/* Minute Hand (Sleek tapered hand) */}
+            <div
+              className="absolute w-0.5 bg-gradient-to-t from-slate-300 to-white rounded-full origin-bottom shadow-lg"
+              style={{
+                height: '62px',
+                bottom: '90px',
+                transform: `rotate(${minuteDeg}deg)`,
+                transition: 'transform 0.05s linear',
+              }}
+            />
+
+            {/* Second Hand (Fine Golden / Red sweep with Breguet balance) */}
+            {settings.showSeconds && (
+              <div
+                className="absolute w-[1.5px] bg-red-500 origin-bottom shadow-md"
+                style={{
+                  height: '70px',
+                  bottom: '90px',
+                  transform: `rotate(${secondDeg}deg)`,
+                }}
+              >
+                {/* Counterbalance tail */}
+                <div className="w-1.5 h-1.5 rounded-full bg-red-500 absolute -bottom-2 -left-[2px]" />
+              </div>
+            )}
+
+            {/* Center Cap Pin */}
+            <div className="w-3 h-3 rounded-full bg-amber-400 border-2 border-slate-900 z-20 shadow" />
+          </div>
+        </div>
+        {renderTimezoneTag()}
+      </div>
+    );
+  }
+
+  // 2. AVIATOR CHRONO (经典航空时钟)
+  if (style === 'aviator') {
+    const dayOfWeekShort = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][displayNow.getDay()];
+    const aviatorDateStr = `${monthNum}.${dayNum} ${dayOfWeekShort}`;
+
+    return (
+      <div
+        className="w-full h-full relative flex flex-col items-center justify-center text-center select-none"
+        style={{ transform: `scale(${scale})`, transformOrigin: 'center center' }}
+      >
+        <div className="relative w-44 h-44 rounded-full flex items-center justify-center pointer-events-none">
+          <svg className="w-full h-full" viewBox="0 0 200 200">
+            <defs>
+              {/* 3D Depth Shadow for Hands */}
+              <filter id="aviatorHand3D" x="-30%" y="-30%" width="160%" height="160%">
+                <feDropShadow dx="1" dy="2.5" stdDeviation="1.8" floodColor="#000000" floodOpacity="0.65" />
+              </filter>
+              {/* Luminous Green Glow Filter */}
+              <filter id="greenNightGlow" x="-50%" y="-50%" width="200%" height="200%">
+                <feDropShadow dx="0" dy="0" stdDeviation="2.5" floodColor="#22c55e" floodOpacity="0.9" />
+              </filter>
+              {/* Red Tip Glow Filter */}
+              <filter id="redTipGlow" x="-50%" y="-50%" width="200%" height="200%">
+                <feDropShadow dx="0" dy="0" stdDeviation="2" floodColor="#ef4444" floodOpacity="0.95" />
+              </filter>
+              {/* Metallic Red Linear Gradient */}
+              <linearGradient id="metallicRed" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#b91c1c" />
+                <stop offset="35%" stopColor="#ef4444" />
+                <stop offset="55%" stopColor="#f87171" />
+                <stop offset="70%" stopColor="#ef4444" />
+                <stop offset="100%" stopColor="#991b1b" />
+              </linearGradient>
+              {/* Mirror Silver Facet Gradient */}
+              <linearGradient id="mirrorSilverLeft" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#94a3b8" />
+                <stop offset="40%" stopColor="#e2e8f0" />
+                <stop offset="100%" stopColor="#ffffff" />
+              </linearGradient>
+              <linearGradient id="mirrorSilverRight" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#ffffff" />
+                <stop offset="60%" stopColor="#cbd5e1" />
+                <stop offset="100%" stopColor="#64748b" />
+              </linearGradient>
+            </defs>
+
+            {/* Dial Background Plate */}
+            <circle cx="100" cy="100" r="98" fill="#090d16" stroke="#1e293b" strokeWidth="1" />
+            <circle cx="100" cy="100" r="91" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="0.8" />
+            <circle cx="100" cy="100" r="84" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="0.5" />
+
+            {/* Outer 60-Minute Ticks with Aviation Precision */}
+            {Array.from({ length: 60 }).map((_, i) => {
+              const deg = i * 6;
+              const isMajor = i % 5 === 0;
+              const isCardinal = i % 15 === 0;
+              if (isCardinal) return null; // Replaced by luminous markers
+              return (
+                <line
+                  key={`aviator-tick-${i}`}
+                  x1="100"
+                  y1={isMajor ? '84' : '87'}
+                  x2="100"
+                  y2="92"
+                  stroke={isMajor ? '#f59e0b' : 'rgba(255,255,255,0.25)'}
+                  strokeWidth={isMajor ? '1.4' : '0.6'}
+                  transform={`rotate(${deg} 100 100)`}
+                />
+              );
+            })}
+
+            {/* Enhanced Luminous Green Night Markers at 12, 3, 6, 9 positions */}
+            {/* 12 o'clock Aviation Dual Dot Triangle */}
+            <g transform="translate(100, 16)" filter="url(#greenNightGlow)">
+              <polygon points="0,-3 -4,4 4,4" fill="#4ade80" />
+              <circle cx="-6" cy="1" r="1.3" fill="#4ade80" />
+              <circle cx="6" cy="1" r="1.3" fill="#4ade80" />
+            </g>
+            {/* 3 o'clock Luminous Bar */}
+            <rect x="178" y="98.5" width="8" height="3" rx="1" fill="#4ade80" filter="url(#greenNightGlow)" />
+            {/* 6 o'clock Luminous Bar */}
+            <rect x="98.5" y="178" width="3" height="8" rx="1" fill="#4ade80" filter="url(#greenNightGlow)" />
+            {/* 9 o'clock Luminous Bar */}
+            <rect x="14" y="98.5" width="8" height="3" rx="1" fill="#4ade80" filter="url(#greenNightGlow)" />
+
+            {/* Prominent High-Contrast Numerals 12, 3, 6, 9 with Green Luminescent Tint */}
+            <text x="100" y="36" fill="#f8fafc" fontSize="15" fontWeight="900" textAnchor="middle" fontFamily="monospace" filter="url(#greenNightGlow)">
+              12
+            </text>
+            <text x="168" y="105" fill="#f8fafc" fontSize="14" fontWeight="900" textAnchor="middle" fontFamily="monospace" filter="url(#greenNightGlow)">
+              3
+            </text>
+            <text x="100" y="174" fill="#f8fafc" fontSize="14" fontWeight="900" textAnchor="middle" fontFamily="monospace" filter="url(#greenNightGlow)">
+              6
+            </text>
+            <text x="32" y="105" fill="#f8fafc" fontSize="14" fontWeight="900" textAnchor="middle" fontFamily="monospace" filter="url(#greenNightGlow)">
+              9
+            </text>
+
+            {/* 全新动态日期显示: 3 点钟数字内侧加入小字号 9.19 sat，绿色夜光滤镜，位置经调整不挡指针 */}
+            {showDate && (
+              <g transform="translate(136, 100)" filter="url(#greenNightGlow)">
+                <rect x="-18" y="-7" width="36" height="14" rx="2.5" fill="#042f1a" stroke="#22c55e" strokeWidth="0.8" opacity="0.9" />
+                <text
+                  x="0"
+                  y="3.2"
+                  fill="#4ade80"
+                  fontSize="7"
+                  fontWeight="bold"
+                  textAnchor="middle"
+                  fontFamily="monospace"
+                  letterSpacing="0.4"
+                >
+                  {aviatorDateStr}
+                </text>
+              </g>
+            )}
+
+            {/* Instrument Brand / Type */}
+            <text x="100" y="66" fill="#94a3b8" fontSize="4.8" fontWeight="600" textAnchor="middle" fontFamily="sans-serif" letterSpacing="1.5">
+              MIL-SPEC CHRONO
+            </text>
+
+            {/* Digital Time Readout at 6 o'clock */}
+            <g transform="translate(100, 138)">
+              <rect x="-20" y="-7" width="40" height="13" rx="2" fill="#0f172a" stroke="rgba(255,255,255,0.15)" strokeWidth="0.6" />
+              <text x="0" y="2.5" fill="#94a3b8" fontSize="6.8" fontWeight="bold" textAnchor="middle" fontFamily="monospace">
+                {hoursDisplay}:{minutesDisplay}
+              </text>
+            </g>
+
+            {/* 指针美化: 多段高光、镜面银光泽、金属漆红色、3D 厚度阴影 */}
+            {/* 1. Hour Hand (Faceted 3D Sword Hand) */}
+            <g transform={`rotate(${hourDeg} 100 100)`} filter="url(#aviatorHand3D)">
+              {/* Left facet */}
+              <polygon points="100,100 96.5,95 97.5,50 100,42" fill="url(#mirrorSilverLeft)" stroke="#334155" strokeWidth="0.4" />
+              {/* Right facet */}
+              <polygon points="100,100 103.5,95 102.5,50 100,42" fill="url(#mirrorSilverRight)" stroke="#334155" strokeWidth="0.4" />
+              {/* Central Green Luminous Inlay */}
+              <rect x="98.7" y="52" width="2.6" height="34" rx="1.2" fill="#4ade80" filter="url(#greenNightGlow)" />
+            </g>
+
+            {/* 2. Minute Hand (Extended 3D Sword Hand) */}
+            <g transform={`rotate(${minuteDeg} 100 100)`} filter="url(#aviatorHand3D)">
+              {/* Left facet */}
+              <polygon points="100,100 97,95 98,32 100,22" fill="url(#mirrorSilverLeft)" stroke="#334155" strokeWidth="0.4" />
+              {/* Right facet */}
+              <polygon points="100,100 103,95 102,32 100,22" fill="url(#mirrorSilverRight)" stroke="#334155" strokeWidth="0.4" />
+              {/* Central Green Luminous Inlay */}
+              <rect x="98.7" y="32" width="2.6" height="52" rx="1.2" fill="#4ade80" filter="url(#greenNightGlow)" />
+            </g>
+
+            {/* 3. Second Hand (Metallic Red Paint, Counterbalance, Red Luminescent Tip Glow) */}
+            {settings.showSeconds && (
+              <g transform={`rotate(${secondDeg} 100 100)`} filter="url(#aviatorHand3D)">
+                {/* Tail and Counterbalance */}
+                <line x1="100" y1="120" x2="100" y2="22" stroke="url(#metallicRed)" strokeWidth="1.2" />
+                <circle cx="100" cy="115" r="3.2" fill="url(#metallicRed)" stroke="#ffffff" strokeWidth="0.5" />
+                {/* Luminous Red Needle Tip Glow */}
+                <g filter="url(#redTipGlow)">
+                  <polygon points="100,18 97,25 103,25" fill="#ef4444" />
+                  <circle cx="100" cy="24" r="1.5" fill="#ffffff" />
+                </g>
+              </g>
+            )}
+
+            {/* Center Cap Hub (Faceted Multi-Ring) */}
+            <circle cx="100" cy="100" r="4.5" fill="#0f172a" stroke="#cbd5e1" strokeWidth="1.2" />
+            <circle cx="100" cy="100" r="2.2" fill="url(#metallicRed)" />
+            <circle cx="100" cy="100" r="1" fill="#ffffff" />
+          </svg>
+        </div>
+        {renderTimezoneTag()}
+      </div>
+    );
+  }
+
+  // 3. CYBER HUD CHRONO
+  if (style === 'cyber') {
+    return (
+      <div
+        className="w-full h-full relative flex flex-col items-center justify-center text-center select-none"
+        style={{ transform: `scale(${scale})`, transformOrigin: 'center center' }}
+      >
+        <div className="text-[9px] font-mono text-red-400 font-bold tracking-widest uppercase mb-1">
+          CYBER CHRONO
+        </div>
+
+        {/* Circular Seconds Progress */}
+        <div className="relative w-36 h-36 flex items-center justify-center">
+          <svg className="w-full h-full -rotate-90 pointer-events-none" viewBox="0 0 100 100">
+            <circle
+              cx="50"
+              cy="50"
+              r="44"
+              fill="none"
+              stroke="rgba(239, 68, 68, 0.15)"
+              strokeWidth="4"
+            />
+            <circle
+              cx="50"
+              cy="50"
+              r="44"
+              fill="none"
+              stroke="#ef4444"
+              strokeWidth="4"
+              strokeDasharray="276"
+              strokeDashoffset={276 - (276 * (seconds + milliseconds / 1000)) / 60}
+              strokeLinecap="round"
+            />
+          </svg>
+
+          <div className="absolute flex flex-col items-center justify-center">
+            <div className="font-mono font-black text-white text-2xl drop-shadow leading-none">
+              {hoursDisplay}:{minutesDisplay}
+            </div>
+            <div className="text-xs font-mono text-red-400 font-bold mt-0.5">
+              {secondsDisplay}s
+            </div>
+            {showDate && (
+              <div className="mt-1 px-1.5 py-0.5 rounded bg-red-950/70 border border-red-500/40 text-[9px] font-mono text-red-200">
+                {dateStr}
+              </div>
+            )}
+          </div>
+        </div>
+        {renderTimezoneTag()}
+      </div>
+    );
+  }
+
+  // 4. DIGITAL CHRONO
+  if (style === 'digital') {
+    return (
+      <div
+        className="w-full h-full relative flex flex-col items-center justify-center text-center select-none"
+        style={{ transform: `scale(${scale})`, transformOrigin: 'center center' }}
+      >
+        <div className="text-[10px] font-bold text-red-300 tracking-wider mb-1">
+          {lang === 'en' ? 'TIME' : lang === 'zh' ? '数字时钟' : '时间 clock'}
+        </div>
+        <div className="flex flex-col items-center justify-center my-1">
+          <div className="font-mono font-black text-white text-3xl tracking-tight drop-shadow-md leading-none">
+            {hoursDisplay}:{minutesDisplay}
+            {settings.showSeconds && (
+              <span className="text-red-400 text-xl ml-1">:{secondsDisplay}</span>
+            )}
+          </div>
+          {!settings.is24Hour && (
+            <div className="text-xs font-mono font-semibold text-red-300 mt-1">
+              {ampm}
+            </div>
+          )}
+          {showDate && (
+            <div className="mt-2 px-2 py-0.5 rounded-md bg-red-950/60 border border-red-500/30 text-[11px] font-mono font-semibold text-red-200">
+              {dateStr}
+            </div>
+          )}
+        </div>
+        {renderTimezoneTag()}
+      </div>
+    );
+  }
+
+  // 5. MINIMAL BAUHAUS
+  return (
+    <div
+      className="w-full h-full relative flex flex-col items-center justify-center text-center select-none"
+      style={{ transform: `scale(${scale})`, transformOrigin: 'center center' }}
+    >
+      <div className="relative w-44 h-44 rounded-full flex items-center justify-center pointer-events-none">
+        {/* Clean Tick Marks */}
+        <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100">
+          {Array.from({ length: 12 }).map((_, i) => {
+            const deg = i * 30;
+            return (
+              <line
+                key={i}
+                x1="50"
+                y1="8"
+                x2="50"
+                y2={i % 3 === 0 ? '14' : '11'}
+                stroke="rgba(255,255,255,0.5)"
+                strokeWidth={i % 3 === 0 ? '2' : '1'}
+                transform={`rotate(${deg} 50 50)`}
+              />
+            );
+          })}
+        </svg>
+
+        {showDate && (
+          <div className="absolute bottom-8 px-1.5 py-0.5 rounded bg-white/10 border border-white/20 text-[9px] font-mono text-slate-200 z-10">
+            {dateStr}
+          </div>
+        )}
+
+        {/* Hands */}
+        <div className="relative w-full h-full flex items-center justify-center pointer-events-none">
+          <div
+            className="absolute w-1 bg-white rounded-full origin-bottom shadow-md"
+            style={{ height: '36px', bottom: '88px', transform: `rotate(${hourDeg}deg)` }}
+          />
+          <div
+            className="absolute w-0.5 bg-slate-300 rounded-full origin-bottom shadow-md"
+            style={{ height: '54px', bottom: '88px', transform: `rotate(${minuteDeg}deg)` }}
+          />
+          {settings.showSeconds && (
+            <div
+              className="absolute w-0.5 bg-amber-400 rounded-full origin-bottom shadow-lg"
+              style={{ height: '60px', bottom: '88px', transform: `rotate(${secondDeg}deg)` }}
+            />
+          )}
+          <div className="w-2 h-2 rounded-full bg-white z-10" />
+        </div>
+      </div>
+      {renderTimezoneTag()}
+    </div>
+  );
+};

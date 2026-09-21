@@ -1,0 +1,85 @@
+@import "tailwindcss";
+
+@layer utilities {
+  .preserve-3d {
+    transform-style: preserve-3d;
+  }
+  .perspective-500 {
+    perspective: 500px;
+  }
+  .perspective-800 {
+    perspective: 800px;
+  }
+  .backface-hidden {
+    backface-visibility: hidden;
+  }
+}
+
+/* Custom 3D Bubble & Glass Shading */
+.bubble-3d-glass {
+  background: radial-gradient(
+    circle at 35% 28%,
+    rgba(255, 255, 255, 0.22) 0%,
+    rgba(255, 255, 255, 0.08) 25%,
+    rgba(15, 23, 42, 0.72) 65%,
+    rgba(2, 6, 23, 0.94) 100%
+  );
+  box-shadow:
+    inset -4px -6px 14px rgba(0, 0, 0, 0.8),
+    inset 4px 6px 16px rgba(255, 255, 255, 0.35),
+    0 10px 25px -5px rgba(0, 0, 0, 0.7),
+    0 0 20px -2px var(--bubble-glow, rgba(56, 189, 248, 0.25));
+}
+
+.bubble-specular-glare {
+  background: radial-gradient(
+    ellipse at top left,
+    rgba(255, 255, 255, 0.55) 0%,
+    rgba(255, 255, 255, 0.15) 30%,
+    rgba(255, 255, 255, 0) 65%
+  );
+}
+
+.bubble-bottom-refraction {
+  background: radial-gradient(
+    ellipse at bottom,
+    rgba(255, 255, 255, 0.18) 0%,
+    rgba(255, 255, 255, 0.04) 40%,
+    transparent 70%
+  );
+}
+
+/* Rubber Gummy Jelly Bounce Animation */
+@keyframes jellyBounce {
+  0% { transform: scale(1, 1); }
+  25% { transform: scale(1.06, 0.92); }
+  50% { transform: scale(0.95, 1.05); }
+  75% { transform: scale(1.02, 0.98); }
+  100% { transform: scale(1, 1); }
+}
+
+.animate-jelly {
+  animation: jellyBounce 0.42s cubic-bezier(0.25, 1.35, 0.5, 1);
+}
+
+/* HUD Mirror Mode for Windshield Projection */
+.hud-mirror-mode {
+  transform: scaleX(-1);
+}
+
+/* Custom scrollbar for HUD panels */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.6);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.5);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.8);
+}
+

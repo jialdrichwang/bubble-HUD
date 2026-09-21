@@ -1,0 +1,6 @@
+{
+  "name": "Bubble HUD",
+  "description": "车用3D立体气泡HUD行车仪表盘，具备卫星速度、水平仪、侧倾仪、3D透视指南针、经纬度、时钟、气候、秒表倒计时与速度曲线",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
